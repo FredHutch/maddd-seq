@@ -4,6 +4,8 @@ set -Eeuo pipefail
 
 nextflow \
     run \
+    -c ../nextflow.config \
     ../main.nf \
-    --manifest manifest.csv \
+    -profile docker \
+    --sample_sheet manifest.csv \
     --output output
