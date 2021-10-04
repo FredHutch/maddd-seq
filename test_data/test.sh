@@ -8,4 +8,5 @@ nextflow \
     ../main.nf \
     -profile docker \
     --sample_sheet manifest.csv \
-    --output output
+    --output output \
+    -resume

@@ -9,9 +9,20 @@ workflow manifest_wf{
     manifest_fp
 
     main:
-    parse_manifest(manifest_fp)
+
+    reads_ch = Channel.from(
+        file(manifest_fp)
+    ).splitCsv(
+        header: true
+    ).map {
+        r -> [
+            r["specimen"], 
+            file(r["R1"]),
+            file(r["R2"])
+        ]
+    }
 
     emit:
-    reads = parse_manifest.out
+    reads = reads_ch
 
 }

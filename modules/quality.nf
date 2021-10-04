@@ -6,13 +6,13 @@ nextflow.enable.dsl=2
 // Assess quality of input data
 process fastqc_input {
     container "${params.container__fastqc}"
-    cpus 1
     
     input:
     tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path("fastqc/fastqc.html")
+    path "fastqc/*.zip", emit: zip
+    path "fastqc/*.html", emit: html
 
     script:
     template 'fastqc.sh'
@@ -22,13 +22,13 @@ process fastqc_input {
 // Assess quality of trimmed data
 process fastqc_trimmed {
     container "${params.container__fastqc}"
-    cpus 1
     
     input:
     tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path("fastqc/fastqc.html")
+    path "fastqc/*.zip", emit: zip
+    path "fastqc/*.html", emit: html
 
     script:
     template 'fastqc.sh'
@@ -38,7 +38,6 @@ process fastqc_trimmed {
 // Perform quality trimming on the input FASTQ data
 process quality_trim {
     container "${params.container__cutadapt}"
-    cpus 1
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -49,6 +48,38 @@ process quality_trim {
 
     script:
     template 'quality_trim.sh'
+
+}
+
+// Combine all FASTQC data into a single report
+process multiqc_input {
+    container "${params.container__multiqc}"
+    publishDir "${params.output}/1_input_data/input/", mode: 'copy', overwrite: true
+    
+    input:
+    path "*"
+
+    output:
+    path "multiqc_report.html"
+
+    script:
+    template 'multiqc.sh'
+
+}
+
+// Combine all FASTQC data into a single report
+process multiqc_trimmed {
+    container "${params.container__multiqc}"
+    publishDir "${params.output}/1_input_data/quality_trimmed/", mode: 'copy', overwrite: true
+    
+    input:
+    path "*"
+
+    output:
+    path "multiqc_report.html"
+
+    script:
+    template 'multiqc.sh'
 
 }
 
@@ -63,11 +94,17 @@ workflow quality_wf{
     // Generate quality metrics for the input data
     fastqc_input(reads_ch)
 
+    // Combine all of the FASTQC data for the input data
+    multiqc_input(fastqc_input.out.zip.flatten().toSortedList())
+
     // Run quality trimming
     quality_trim(reads_ch)
 
     // Generate quality metrics for the trimmed data
-    fastqc_trim(reads_ch)
+    fastqc_trimmed(reads_ch)
+
+    // Combine all of the FASTQC data for the trimmed data
+    multiqc_trimmed(fastqc_trimmed.out.zip.flatten().toSortedList())
 
     emit:
     reads = quality_trim.out.reads
