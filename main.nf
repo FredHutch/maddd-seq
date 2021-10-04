@@ -16,6 +16,10 @@ params.max_family_offset = 5
 params.min_reads_per_ssc = 3
 params.trim_length = 5
 
+// Set the containers to use for each component
+params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
+params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
+
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
 include { quality_wf } from './modules/quality'
@@ -71,7 +75,7 @@ workflow {
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
-        barcodes_wf.out.bam
+        trim_wf.out.bam
     )
     // output:
     //   bam:
