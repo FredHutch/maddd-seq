@@ -43,7 +43,7 @@ process quality_trim {
     tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path("trimmed.R1.fastq.gz"), path("trimmed.R1.fastq.gz"), emit: reads
+    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), emit: reads
     tuple val(specimen), path("${specimen}.cutadapt.json"), emit: log
 
     script:
@@ -101,7 +101,7 @@ workflow quality_wf{
     quality_trim(reads_ch)
 
     // Generate quality metrics for the trimmed data
-    fastqc_trimmed(reads_ch)
+    fastqc_trimmed(quality_trim.out.reads)
 
     // Combine all of the FASTQC data for the trimmed data
     multiqc_trimmed(fastqc_trimmed.out.zip.flatten().toSortedList())

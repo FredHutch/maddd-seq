@@ -13,8 +13,8 @@ cutadapt \
     --pair-filter=any \
     --quality-cutoff=${params.min_qvalue} \
     --minimum-length=${params.min_align_score} \
-    -o trimmed.R1.fastq.gz \
-    -p trimmed.R1.fastq.gz \
+    -o "${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
+    -p "${R2.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
     --json="${specimen}.cutadapt.json" \
     "$R1" \
     "$R2"

@@ -88,8 +88,8 @@ workflow {
     //   reads:
     //     tuple val(specimen), path(read_1), path(read_2)
     // publish:
-    //   1_input_data/input.fastqc.html
-    //   1_input_data/quality_trimmed.fastqc.html
+    //   1_input_data/input/multiqc_report.html
+    //   1_input_data/quality_trimmed/multiqc_report.html
 
     // Clip the barcodes from the ends of the FASTQ files
     // This part of the workflow will also perform error
