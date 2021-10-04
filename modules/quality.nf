@@ -44,7 +44,7 @@ process quality_trim {
     tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path(R1), path(R2), emit: reads
+    tuple val(specimen), path("trimmed.R1.fastq.gz"), path("trimmed.R1.fastq.gz"), emit: reads
     tuple val(specimen), path("${specimen}.cutadapt.json"), emit: log
 
     script:
