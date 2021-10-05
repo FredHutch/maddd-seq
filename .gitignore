@@ -4,6 +4,6 @@ test_data/fastq/*fastq.gz
 .nextflow.log*
 .nextflow/
 work/
-test_data/output/
+test_data/*output/
 .DS_Store
 pubweb-manifest*.csv
