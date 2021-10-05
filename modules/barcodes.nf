@@ -5,7 +5,7 @@ nextflow.enable.dsl=2
 
 // Remove the UMIs from each read pair and move to the header
 process clip_barcodes {
-    container "${params.container__pysam}"
+    container "${params.container__cutadapt}"
     publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
 
     input:
@@ -14,9 +14,10 @@ process clip_barcodes {
     output:
     tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"), emit: reads
     tuple val(specimen), path("barcode_counts.csv.gz"), emit: counts
+    tuple val(specimen), path("${specimen}.cutadapt.json"), emit: json
 
     script:
-    template 'clip_barcodes.py'
+    template 'clip_barcodes.sh'
 
 }
 
