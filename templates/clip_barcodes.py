@@ -59,11 +59,20 @@ def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G']):
 def fails_quality_filter(bc):
     """Return True if the barcode sequence fails quality checks"""
 
+    # If the barcode contains any N's
+    if "N" in bc or "n" in bc:
+
+        # It fails
+        return True
+
     # If the barcode contains a homopolymer of length max_homopolymer + 1
     if has_homopolymer(bc, max_homopolymer + 1):
 
         # It fails
-        return False
+        return True
+
+    # If passes
+    return False
 
 
 def reformat_read(read_x, bc_concat):
