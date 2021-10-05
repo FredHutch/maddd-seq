@@ -5,16 +5,17 @@ set -Eeuo pipefail
 echo "Processing specimen: $specimen"
 echo "R1: $R1"
 echo "R2: $R2"
-echo "--quality-cutoff=${params.min_qvalue}"
 echo "--minimum-length=${params.min_align_score}"
+echo "--cut=${params.trim_length}"
 echo "--json="${specimen}.cutadapt.json""
 
 cutadapt \
     --pair-filter=any \
-    --cut ${params.trim_length} \
+    --cut=${params.trim_length} \
+    -U ${params.trim_length} \
     --minimum-length=${params.min_align_score} \
-    -o trimmed.R1.fastq.gz \
-    -p trimmed.R2.fastq.gz \
+    -o "${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
+    -p "${R2.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
     --json="${specimen}.cutadapt.json" \
     "$R1" \
     "$R2"

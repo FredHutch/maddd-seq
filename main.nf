@@ -15,19 +15,22 @@ params.min_align_score = 40
 // Unique molecular tags
 params.barcode_length = 12
 params.barcode_max_homopolymer = 5
+params.max_barcode_mismatch = 2
+
+// Trim a fixed amount from the 5' of both reads
+params.trim_length = 5
 
 params.repeat_masker = false
 params.bed = false
-params.max_barcode_mismatch = 2
 params.max_family_offset = 5
 params.min_reads_per_ssc = 3
-params.trim_length = 5
 
 // Set the containers to use for each component
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
 params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
 params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
 params.container__pysam = "quay.io/biocontainers/pysam:0.17.0--py36h61e5637_0"
+params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:4a6179f"
 
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
@@ -58,6 +61,11 @@ Optional Arguments:
   --barcode_max_homopolymer
                         Maximum number of repeated bases in barcode sequences
                         (default: ${params.barcode_max_homopolymer})
+  --max_barcode_mismatch
+                        Maximum number of nucleotide differences used for barcode
+                        error correction
+  --trim_length         Number of bases to trim from the 5' of each read after
+                        ligated barcode sequences are removed
 
 Manifest:
   The manifest is a CSV listing all of the duplex sequencing data to be analyzed.
@@ -109,7 +117,8 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
-    //   2_barcode_trimmed/barcode_frequency.csv
+    //   2_barcode_trimmed/barcode_counts.csv.gz
+    //   2_barcode_trimmed/multiqc_report.html
 
     // Trim a fixed number of bases from the beginning of each read
     trim_wf(
@@ -119,7 +128,6 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
-    //   3_end_trimmed/end_trimmed.fastqc.html
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
@@ -157,5 +165,7 @@ workflow {
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
     //   2_barcode_trimmed/multiqc_report.html
+    //   3_end_trimmed/fastqc/multiqc_report.html
+    //   3_end_trimmed/cutadapt/multiqc_report.html
 
 }

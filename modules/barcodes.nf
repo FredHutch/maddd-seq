@@ -110,15 +110,15 @@ workflow barcodes_wf{
         clip_barcodes.out.counts
     )
 
-    // // Modify the barcode in the FASTQ files to
-    // // the corrected sequence
-    // update_barcodes(
-    //     fastq_ch.combine(
-    //         correct_barcode_errors.out
-    //     )
-    // )
+    // Modify the barcode in the FASTQ files to
+    // the corrected sequence
+    update_barcodes(
+        fastq_ch.combine(
+            correct_barcode_errors.out
+        )
+    )
 
     emit:
-    bam = fastq_ch
+    reads = update_barcodes.out.reads
 
 }
