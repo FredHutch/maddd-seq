@@ -12,8 +12,10 @@ params.output = false
 params.min_qvalue = 20
 params.min_align_score = 40
 
-params.barcode_length = 5
-params.minimum_alignment_score = 20
+// Unique molecular tags
+params.barcode_length = 12
+params.barcode_max_homopolymer = 5
+
 params.repeat_masker = false
 params.bed = false
 params.max_barcode_mismatch = 2
@@ -25,6 +27,7 @@ params.trim_length = 5
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
 params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
 params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
+params.container__pysam = "quay.io/biocontainers/pysam:0.17.0--py36h61e5637_0"
 
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
@@ -50,6 +53,11 @@ Required Arguments:
 Optional Arguments:
   --min_qvalue          Minimum quality score used to trim data (default: ${params.min_qvalue})
   --min_align_score     Minimum alignment score (default: ${params.min_align_score})
+  --barcode_length      Length of the barcodes ligated to the 5' end of each read
+                        (default: ${params.barcode_length})
+  --barcode_max_homopolymer
+                        Maximum number of repeated bases in barcode sequences
+                        (default: ${params.barcode_max_homopolymer})
 
 Manifest:
   The manifest is a CSV listing all of the duplex sequencing data to be analyzed.
@@ -148,5 +156,6 @@ workflow {
     //   8_variants/<specimen>/variants.vcf
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
+    //   2_barcode_trimmed/multiqc_report.html
 
 }

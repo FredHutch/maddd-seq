@@ -14,7 +14,7 @@ cutadapt \
     --cut ${params.trim_length} \
     --minimum-length=${params.min_align_score} \
     -o trimmed.R1.fastq.gz \
-    -p trimmed.R1.fastq.gz \
+    -p trimmed.R2.fastq.gz \
     --json="${specimen}.cutadapt.json" \
     "$R1" \
     "$R2"

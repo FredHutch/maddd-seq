@@ -9,7 +9,7 @@ process fixed_trim {
     cpus 1
     
     input:
-    tuple val(specimen), path("trimmed.R1.fastq.gz"), path("trimmed.R1.fastq.gz"), emit: reads
+    tuple val(specimen), path("trimmed.R1.fastq.gz"), path("trimmed.R1.fastq.gz")
 
     output:
     tuple val(specimen), path(R1), path(R2), emit: reads
