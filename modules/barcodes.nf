@@ -6,12 +6,14 @@ nextflow.enable.dsl=2
 // Remove the UMIs from each read pair and move to the header
 process clip_barcodes {
     container "${params.container__pysam}"
+    publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
 
     input:
     tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz")
+    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"), emit: reads
+    tuple val(specimen), path("barcode_counts.csv.gz"), emit: counts
 
     script:
     template 'clip_barcodes.py'
@@ -50,6 +52,37 @@ process multiqc {
 
 }
 
+// Perform error correction on the barcodes
+process correct_barcode_errors {
+    container "${params.container__pandas}"
+    publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true, glob: "barcode_corrections.csv.gz"
+
+    input:
+    tuple val(specimen), path("barcode_counts.csv.gz")
+
+    output:
+    tuple val(specimen), path("barcode_corrections.csv.gz")
+
+    script:
+    template 'correct_barcode_errors.py'
+
+}
+
+// Apply the corrected barcode sequences to the FASTQ data
+process update_barcodes {
+    container "${params.container__pysam}"
+
+    input:
+    tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")
+
+    output:
+    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.corrected.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.corrected.fastq.gz"), emit: reads
+
+    script:
+    template 'update_barcodes.py'
+
+}
+
 workflow barcodes_wf{
 
     take:
@@ -63,21 +96,20 @@ workflow barcodes_wf{
 
     // Assess the quality of the WGS data after barcodes are removed
     fastqc(
-        clip_barcodes.out
+        clip_barcodes.out.reads
     )
 
     // Combine all of the FASTQC reports into a single file
     multiqc(
-        fastqc.out.zip
+        fastqc.out.zip.flatten().toSortedList()
     )
 
-    // // Count up the number of reads with each barcode
-    // count_barcodes(clip_barcodes.out)
+    // Perform error correction on the barcodes
+    correct_barcode_errors(
+        clip_barcodes.out.counts
+    )
 
-    // // Perform error correction on the barcodes
-    // correct_barcode_errors(count_barcodes.out)
-
-    // // Modify the barcode in the unaligned BAM to
+    // // Modify the barcode in the FASTQ files to
     // // the corrected sequence
     // update_barcodes(
     //     fastq_ch.combine(

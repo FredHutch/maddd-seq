@@ -33,12 +33,15 @@ print(f"R2: {input_2}")
 input_counter = 0
 output_counter = 0
 
+# Count up the number of times that we've seen each barcode
+barcode_counts = defaultdict(int)
+
 output_1 = "${R1.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"
 print(f"Output R1: {output_1}")
 output_2 = "${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz"
 print(f"Output R2: {output_2}")
 
-def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G', 'a', 't', 'c', 'g']):
+def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G']):
     """Check if a string s contains a homopolymer of length n"""
 
     # Iterate over the nucleotides
@@ -118,6 +121,9 @@ with pysam.FastxFile(input_1) as i_1, pysam.FastxFile(input_2) as i_2, gzip.open
             # Skip it
             continue
 
+        # Add to the counter of how many times we've seen each barcode
+        barcode_counts[bc_concat] += 1
+
         # Write out both reads
         # double slashes are used below to account for Nextflow interpolation
         o_1.write(str(read1) + "\\n")
@@ -127,3 +133,18 @@ with pysam.FastxFile(input_1) as i_1, pysam.FastxFile(input_2) as i_2, gzip.open
 
 print(f"Processed {input_counter:,} read pairs")
 print(f"Wrote out {output_counter:,} read pairs passing all filters")
+
+print(f"Observed {len(barcode_counts):,} unique barcodes across all read pairs")
+
+# WRITE OUT THE BARCODE COUNTS
+with gzip.open("barcode_counts.csv.gz", "wt") as fo:
+    # Write the header
+    fo.write("barcode,count\\n")
+
+    # For each barcode
+    for barcode, count in barcode_counts.items():
+
+        # Write out a line
+        fo.write(f"{barcode},{count}\\n")
+
+print("Wrote out barcode_counts.csv.gz")
