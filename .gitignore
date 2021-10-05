@@ -5,3 +5,4 @@ test_data/fastq/*fastq.gz
 .nextflow/
 work/
 test_data/output/
+.DS_Store
