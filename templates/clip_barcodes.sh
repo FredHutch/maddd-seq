@@ -18,7 +18,7 @@ cutadapt \
     -o "${R1.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz" \
     -p "${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz" \
     --json="${specimen}.cutadapt.json" \
-    --rename='{id} {r1.cut_prefix}{r2.cut_prefix}' \
+    --rename='{id} BC:Z:{r1.cut_prefix}{r2.cut_prefix}' \
     "$R1" \
     "$R2"
 

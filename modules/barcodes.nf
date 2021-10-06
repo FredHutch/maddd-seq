@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 // Remove the UMIs from each read pair and move to the header
 process clip_barcodes {
     container "${params.container__cutadapt}"
-    publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
+    publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
 
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -69,6 +69,22 @@ process correct_barcode_errors {
 
 }
 
+// Make plots for the barcodes, both raw and corrected
+process plot_barcodes {
+    container "${params.container__python_plotting}"
+    publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true
+
+    input:
+    tuple val(specimen), path("barcode_counts.csv.gz"), path("barcode_corrections.csv.gz")
+
+    output:
+    path "barcodes.*.pdf"
+
+    script:
+    template 'plot_barcodes.py'
+
+}
+
 // Apply the corrected barcode sequences to the FASTQ data
 process update_barcodes {
     container "${params.container__pysam}"
@@ -110,10 +126,17 @@ workflow barcodes_wf{
         clip_barcodes.out.counts
     )
 
+    // Make plots summarizing the barcodes
+    plot_barcodes(
+        clip_barcodes.out.counts.join(
+            correct_barcode_errors.out
+        )
+    )
+
     // Modify the barcode in the FASTQ files to
     // the corrected sequence
     update_barcodes(
-        fastq_ch.combine(
+        clip_barcodes.out.reads.join(
             correct_barcode_errors.out
         )
     )

@@ -24,7 +24,7 @@ corrected_barcode_fp = "barcode_corrections.csv.gz"
 
 # Get the header
 with gzip.open(corrected_barcode_fp, "rt") as handle:
-    table_header = handle.readlines(1).rstrip("\\n").split(",")
+    table_header = handle.readlines(1)[0].rstrip("\\n").split(",")
 
 # Make sure that we have the headers that are expected, and get the index
 assert 'barcode' in table_header
@@ -58,8 +58,14 @@ def reformat_read(read_x):
     """Reformat a single read"""
 
     # Get the original barcode sequence
-    assert read_x.comment.startswith("BC:Z:")
+    assert read_x.comment.startswith("BC:Z:"), read_x.comment
     original_bc = read_x.comment[len("BC:Z:"):]
+
+    # If this barcode was filtered out during the correction process
+    if corrected_barcodes.get(original_bc) is None:
+        return None
+
+    # Otherwise
 
     # Get the corrected barcode
     assert original_bc in corrected_barcodes
@@ -82,13 +88,15 @@ def correct_fastq(fp_in, fp_out):
         # Iterate over each of the reads
         for read in handle_i:
 
-            # Correct the read and write out
-            handle_o.write(
-                str(
-                    reformat_read(read)
-                ) + "\\n"
-            )
-            counter += 1
+            # Correct the read
+            read = reformat_read(read)
+
+            # If the read could be corrected
+            if read is not None:
+
+                # Write out to the file
+                handle_o.write(str(read) + "\\n")
+                counter += 1
 
     print(f"Corrected {counter:,} reads from {fp_in} --> {fp_out}")
 

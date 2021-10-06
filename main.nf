@@ -14,7 +14,7 @@ params.min_align_score = 40
 
 // Unique molecular tags
 params.barcode_length = 12
-params.barcode_max_homopolymer = 5
+params.barcode_max_homopolymer = 6
 params.max_barcode_mismatch = 2
 
 // Trim a fixed amount from the 5' of both reads
@@ -31,6 +31,7 @@ params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
 params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
 params.container__pysam = "quay.io/biocontainers/pysam:0.17.0--py36h61e5637_0"
 params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:4a6179f"
+params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
 
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
@@ -117,7 +118,7 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
-    //   2_barcode_trimmed/barcode_counts.csv.gz
+    //   2_barcode_trimmed/{specimen}/barcode_counts.csv.gz
     //   2_barcode_trimmed/multiqc_report.html
 
     // Trim a fixed number of bases from the beginning of each read

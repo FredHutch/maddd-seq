@@ -20,6 +20,7 @@ else
         -profile docker \
         --sample_sheet $MANIFEST \
         --output ${MANIFEST%.csv}.output \
+        -with-report ${MANIFEST%.csv}.output.html \
         -resume
 
 fi
