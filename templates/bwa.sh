@@ -26,7 +26,6 @@ bwa \
     ${R2} \
 | samtools \
     sort \
-    -m3G \
     --threads ${task.cpus} \
     -o aligned.bam -
 
