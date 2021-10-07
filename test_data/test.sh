@@ -6,7 +6,7 @@ set -Eeuo pipefail
 MANIFEST=$1
 
 # Use the pre-compiled yeast genome by default
-GENOME=${GENOME:-genome/yeast/GCF_000146045.2_R64_genomic.fna.gz}
+GENOME=${GENOME:-genome/yeast/GCF_000146045.2_R64_genomic.fna}
 
 if (( ${#MANIFEST} == 0 )); then
 
@@ -23,7 +23,7 @@ else
         -profile docker \
         --sample_sheet $MANIFEST \
         --output ${MANIFEST%.csv}.output \
-        --genome ${GENOME}'*' \
+        --genome ${GENOME}.'*' \
         -with-report ${MANIFEST%.csv}.output.html \
         -resume
 
