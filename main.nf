@@ -7,6 +7,7 @@ nextflow.enable.dsl=2
 params.help = false
 params.sample_sheet = false
 params.output = false
+params.genome = false
 
 // Quality trimming
 params.min_qvalue = 20
@@ -32,6 +33,7 @@ params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
 params.container__pysam = "quay.io/biocontainers/pysam:0.17.0--py36h61e5637_0"
 params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:4a6179f"
 params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
+params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:latest"
 
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
@@ -53,6 +55,7 @@ nextflow run FredHutch/wgs-duplex-seq <ARGUMENTS>
 Required Arguments:
   --sample_sheet        CSV file listing samples with headers: specimen, R1, and R2
   --output              Folder to write output files to
+  --genome              Reference genome indexed for alignment by BWA
 
 Optional Arguments:
   --min_qvalue          Minimum quality score used to trim data (default: ${params.min_qvalue})
@@ -82,7 +85,7 @@ workflow {
 
     // Show help message if the user specifies the --help flag at runtime
     // or if --sample_sheet and --output are not provided
-    if ( params.help || params.sample_sheet == false || params.output == false ){
+    if ( params.help || params.sample_sheet == false || params.output == false || params.genome == false ){
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
@@ -119,6 +122,7 @@ workflow {
     //     tuple val(specimen), path(bam)
     // publish:
     //   2_barcode_trimmed/{specimen}/barcode_counts.csv.gz
+    //   2_barcode_trimmed/{specimen}/barcode_corrections.csv.gz
     //   2_barcode_trimmed/multiqc_report.html
 
     // Trim a fixed number of bases from the beginning of each read
@@ -129,10 +133,13 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
+    //   3_end_trimmed/fastqc/multiqc_report.html
+    //   3_end_trimmed/cutadapt/multiqc_report.html
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
-        trim_wf.out.bam
+        trim_wf.out.reads,
+        Channel.fromPath("${params.genome}").toSortedList()
     )
     // output:
     //   bam:

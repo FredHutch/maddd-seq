@@ -9,10 +9,10 @@ process fixed_trim {
     cpus 1
     
     input:
-    tuple val(specimen), path("trimmed.R1.fastq.gz"), path("trimmed.R1.fastq.gz")
+    tuple val(specimen), path(R1), path(R2)
 
     output:
-    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), path("${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), emit: reads
+    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz"), emit: reads
     tuple val(specimen), path("${specimen}.cutadapt.json"), emit: log
 
     script:

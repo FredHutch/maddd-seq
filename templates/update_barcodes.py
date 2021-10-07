@@ -54,25 +54,23 @@ with gzip.open(corrected_barcode_fp, "rt") as handle:
             fields['barcode']
         ] = fields['corrected']
 
+print(f"Read in {len(corrected_barcodes):,} barcode corrections")
+
 def reformat_read(read_x):
     """Reformat a single read"""
 
     # Get the original barcode sequence
     assert read_x.comment.startswith("BC:Z:"), read_x.comment
-    original_bc = read_x.comment[len("BC:Z:"):]
 
     # If this barcode was filtered out during the correction process
-    if corrected_barcodes.get(original_bc) is None:
+    if corrected_barcodes.get(read_x.comment) is None:
         return None
 
     # Otherwise
 
-    # Get the corrected barcode
-    assert original_bc in corrected_barcodes
-    new_bc = corrected_barcodes[original_bc]
-
     # Fill in the corrected barcode
-    read_x.comment = f"BC:Z:{new_bc}"
+    assert read_x.comment in corrected_barcodes
+    read_x.comment = corrected_barcodes[read_x.comment]
 
     return read_x
 
@@ -99,6 +97,8 @@ def correct_fastq(fp_in, fp_out):
                 counter += 1
 
     print(f"Corrected {counter:,} reads from {fp_in} --> {fp_out}")
+
+    assert counter > 0
 
 # Process both R1 and R2 in the same way
 correct_fastq(input_1, output_1)

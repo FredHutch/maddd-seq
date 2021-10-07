@@ -56,7 +56,7 @@ process multiqc {
 // Perform error correction on the barcodes
 process correct_barcode_errors {
     container "${params.container__pandas}"
-    publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true, glob: "barcode_corrections.csv.gz"
+    publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, glob: "barcode_corrections.csv.gz"
 
     input:
     tuple val(specimen), path("barcode_counts.csv.gz")
