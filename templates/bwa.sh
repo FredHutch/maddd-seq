@@ -18,14 +18,16 @@ echo "Running BWA MEM"
 bwa \
     mem \
     -a \
-    -t3 \
+    -t ${task.cpus} \
+    -T ${params.min_align_score} \
+    -C \
     "\$GENOME" \
     ${R1} \
     ${R2} \
 | samtools \
     sort \
     -m3G \
-    -@3 \
+    --threads ${task.cpus} \
     -o aligned.bam -
 
 echo "DONE"
