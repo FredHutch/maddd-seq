@@ -20,24 +20,8 @@ process fixed_trim {
 
 }
 
-// Combine all cutadapt logs into a single report
-process multiqc_cutadapt {
-    container "${params.container__multiqc}"
-    publishDir "${params.output}/3_end_trimmed/cutadapt/", mode: 'copy', overwrite: true
-    
-    input:
-    path "*"
-
-    output:
-    path "multiqc_report.html"
-
-    script:
-    template 'multiqc.sh'
-
-}
-
 // Combine all FASTQC data into a single report
-process multiqc_fastqc {
+process multiqc {
     container "${params.container__multiqc}"
     publishDir "${params.output}/3_end_trimmed/fastqc/", mode: 'copy', overwrite: true
     
@@ -79,21 +63,14 @@ workflow trim_wf{
     // Trim a fixed number of bases from the 5' end
     fixed_trim(reads_ch)
 
-    // Assemble a multiqc report on the trimming process
-    multiqc_cutadapt(
-        fixed_trim.out.log.map{
-            it[1]
-        }.toSortedList()
-    )
-
     // Run FASTQC on the reads post-trimming
     fastqc(
         fixed_trim.out.reads
     )
 
     // Assemble a multiqc report on the FASTQC data
-    multiqc_fastqc(
-        fastqc.out.zip.toSortedList()
+    multiqc(
+        fastqc.out.zip.flatten().toSortedList()
     )
 
     emit:
