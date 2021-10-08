@@ -18,6 +18,21 @@ process shard {
 
 }
 
+// Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
+process extract_positions {
+    container "${params.container__pysam}"
+    
+    input:
+    tuple val(specimen), val(shard_ix), path(bam)
+
+    output:
+    tuple val(specimen), val(shard_ix), path("read_positions.csv.gz")
+
+    script:
+    template 'extract_positions.py'
+
+}
+
 workflow family_wf{
 
     take:
@@ -40,6 +55,10 @@ workflow family_wf{
         [it[0], it[1].name.replaceAll('.bam', ''), it[1]]
     }
 
+    // Extract the ID, position, orientation, chromosome,
+    // and R1/R2 for each alignment
+    extract_positions(
+        shard_ch
     )
 
     // Group reads into families which share the same
