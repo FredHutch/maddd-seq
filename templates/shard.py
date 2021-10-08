@@ -40,8 +40,8 @@ shard_ix = dict()
 for i, r in yield_csv_gz(barcodes_csv_gz):
 
     # The corrected barcode sequence starts with "BC:Z"
-    assert r["corrected"].startswith("BC:Z")
-    corrected = r["corrected"][len("BC:Z"):]
+    assert r["corrected"].startswith("BC:Z:")
+    corrected = r["corrected"][len("BC:Z:"):]
 
     # If we haven't assigned this corrected barcode yet
     if shard_ix.get(corrected) is None:
@@ -69,6 +69,7 @@ with pysam.AlignmentFile(bam_fp, "r") as bam:
         )
 
     counter = 0
+    filtered = 0
 
     # Iterate over the reads
     for read in bam:
@@ -83,7 +84,12 @@ with pysam.AlignmentFile(bam_fp, "r") as bam:
             output_handles[ix].write(read)
             counter += 1
 
-print(f"Wrote out {counter} reads")
+        else:
+            filtered += 1
+
+print(f"Wrote out {counter:,} reads")
+assert counter > 0
+print(f"Filtered out {filtered:,} reads with non-matching barcodes")
 
 # Close all of the file handles
 print(f"Closing {n_shards:,} output file handles")
