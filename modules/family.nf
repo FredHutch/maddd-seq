@@ -3,17 +3,43 @@
 // Using DSL-2
 nextflow.enable.dsl=2
 
+// Break up the aligned reads for each specimen into shards for processing
+process shard {
+    container "${params.container__pysam}"
+    
+    input:
+    tuple val(specimen), path(bam), path(barcodes_csv_gz)
+
+    output:
+    tuple val(specimen), path("shard.*.bam")
+
+    script:
+    template 'shard.py'
+
+}
+
 workflow family_wf{
 
     take:
-    aligned_bam_ch
+    input_ch
+    // tuple val(specimen), path(bam), path(barcodes_csv_gz)
 
     main:
 
     // Break up the aligned BAM into shards which
     // each contain a set of barcodes
     shard(
-        aligned_bam_ch
+        input_ch
+    )
+    // output:
+    // tuple val(specimen), path("shard.*.bam")
+
+    // The output of shard() needs to be transformed to
+    // tuple val(specimen), val(shard_ix), path(bam)
+    shard_ch = shard.out.transpose().map {
+        [it[0], it[1].name.replaceAll('.bam', ''), it[1]]
+    }
+
     )
 
     // Group reads into families which share the same

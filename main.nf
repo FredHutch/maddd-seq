@@ -145,7 +145,8 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
-    //   4_aligned/alignment_summary.csv
+    //   4_aligned/{specimen}/{specimen}.flagstats
+    //   4_aligned/multiqc_report.html
 
     // Group reads into families based on barcodes and alignment position
     // This sub-workflow will also collapse and summarize SSCs and DSCs
