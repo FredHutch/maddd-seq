@@ -80,6 +80,24 @@ process align_ssc {
     template 'align_ssc.sh'
 
 }
+
+// Filter out any re-aligned sequences whose anchor (outermost) coordinates
+// have changed after the realignment of SSCs
+process filter_ssc {
+    container "${params.container__pandas}"
+    publishDir "${params.output}/6_SSC/${specimen}/", mode: 'copy', overwrite: true
+    
+    input:
+    tuple val(specimen), path("realigned.POS.SSC.bam"), path("realigned.NEG.SSC.bam"), path("SSC_STATS/*.csv.gz")
+
+    output:
+    tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
+
+    script:
+    template 'filter_ssc.py'
+
+}
+
 workflow family_wf{
 
     take:
@@ -151,11 +169,18 @@ workflow family_wf{
         ref
     )
     // output:
-    //   tuple val(specimen), val(shard_ix), path(POS_BAM), path(NEG_BAM)
+    //   tuple val(specimen), path(POS_BAM), path(NEG_BAM)
 
-    // Compute the DSC sequences
-    make_dsc(make_ssc.out)
-    //output: tuple val(specimen), path(dsc_bam)
+    // Filter out any re-aligned sequences whose anchor (outermost) coordinates
+    // have changed after the realignment of SSCs
+    SSC_STATS = make_ssc.out.map { [it[0], it[6]] }.groupTuple()
+    filter_ssc(
+        align_ssc
+            .out
+            .join(SSC_STATS)
+    )
+    // input:
+    //   tuple val(specimen), path(POS_BAM), path(NEG_BAM), path(SSC_STATS/*csv.gz)
 
     // Summarize the characteristics of each SSC
     summarize_ssc(make_ssc.out)
