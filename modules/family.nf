@@ -182,23 +182,7 @@ workflow family_wf{
     // input:
     //   tuple val(specimen), path(POS_BAM), path(NEG_BAM), path(SSC_STATS/*csv.gz)
 
-    // Summarize the characteristics of each SSC
-    summarize_ssc(make_ssc.out)
-
-    // Summarize the characteristics of each DSC
-    summarize_dsc(make_dsc.out)
-
     emit:
-    // tuple val(specimen), path(ssc_bam), path(dsc_bam)
-    bam = make_ssc.out.join(
-        make_dsc.out,
-        by: [0, 1]
-    )
-
-    // tuple val(specimen), path(ssc_summary_csv)
-    ssc_summary = summarize_ssc.out
-
-    // tuple val(specimen), path(dsc_summary_csv)
-    dsc_summary = summarize_dsc.out
+    bam = filter_ssc.out
 
 }

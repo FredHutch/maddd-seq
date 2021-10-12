@@ -28,7 +28,6 @@ NEG SSC_FWD_R2 SSC_REV_R1""" | while read STRAND FWD REV; do
     echo "Running BWA MEM for \$STRAND strand with \$FWD and \$REV"
     bwa \
         mem \
-        -a \
         -t ${task.cpus} \
         -T ${params.min_align_score} \
         -C \
