@@ -89,20 +89,23 @@ def filter_bam(keep_reads, input_bam, output_bam):
 
     print(f"Preparing to write {len(keep_reads):,} reads from {input_bam} to {output_bam}")
 
-    # Open the input and output BAM files for reading
-    with pysam.AlignmentFile(input_bam, "rb") as bam_i, pysam.AlignmentFile(output_bam, "wb") as bam_o:
+    # Open the input BAM file for reading
+    with pysam.AlignmentFile(input_bam, "rb") as bam_i:
+    
+        # Open the output BAM file for writing
+        with pysam.AlignmentFile(output_bam, "wb", template=bam_i) as bam_o:
 
-        counter = 0
+            counter = 0
 
-        # Iterate over the input
-        for read in bam_i:
+            # Iterate over the input
+            for read in bam_i:
 
-            # If the read is part of the set
-            if read.query_name in keep_reads:
+                # If the read is part of the set
+                if read.query_name in keep_reads:
 
-                # Write it out
-                bam_o.write(read)
-                counter += 1
+                    # Write it out
+                    bam_o.write(read)
+                    counter += 1
 
     print(f"Wrote {counter:,} reads from {input_bam} to {output_bam}")
     assert len(keep_reads) == counter
