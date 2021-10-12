@@ -21,6 +21,12 @@ params.max_barcode_mismatch = 2
 // Trim a fixed amount from the 5' of both reads
 params.trim_length = 5
 
+// Split up each specimen into shards for parallel processing
+params.n_shards = 100
+
+// Minimum proportion of bases needed to call an SSC base
+params.min_base_prop = 0.7
+
 params.repeat_masker = false
 params.bed = false
 params.max_family_offset = 5
@@ -30,7 +36,6 @@ params.min_reads_per_ssc = 3
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
 params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
 params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
-params.container__pysam = "quay.io/biocontainers/pysam:0.17.0--py36h61e5637_0"
 params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:0fd1e29"
 params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
 params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:latest"
@@ -70,6 +75,8 @@ Optional Arguments:
                         error correction
   --trim_length         Number of bases to trim from the 5' of each read after
                         ligated barcode sequences are removed
+  --n_shards            Number of parallel processes to use for creating families
+                        (default: ${params.n_shards})
 
 Manifest:
   The manifest is a CSV listing all of the duplex sequencing data to be analyzed.
@@ -136,10 +143,14 @@ workflow {
     //   3_end_trimmed/fastqc/multiqc_report.html
     //   3_end_trimmed/cutadapt/multiqc_report.html
 
+    // The pre-compiled genome reference is provided as an input
+    // It must contain a wildcard capturing all required index files
+    genome_ref = Channel.fromPath("${params.genome}").toSortedList()
+
     // Align the barcode-clipped reads to the reference genome
     align_wf(
         trim_wf.out.reads,
-        Channel.fromPath("${params.genome}").toSortedList()
+        genome_ref
     )
     // output:
     //   bam:
@@ -151,8 +162,11 @@ workflow {
     // Group reads into families based on barcodes and alignment position
     // This sub-workflow will also collapse and summarize SSCs and DSCs
     family_wf(
-        align_wf.out.bam
+        align_wf.out.bam.join(barcodes_wf.out.csv),
+        genome_ref
     )
+    // input:
+    //   tuple val(specimen), path(bam), path(barcodes_csv_gz)
     // output:
     //   bam: 
     //     tuple val(specimen), path(ssc_bam), path(dsc_bam)

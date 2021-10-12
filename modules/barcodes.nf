@@ -57,6 +57,7 @@ process multiqc {
 process correct_barcode_errors {
     container "${params.container__pandas}"
     publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, glob: "barcode_corrections.csv.gz"
+    label "highmem"
 
     input:
     tuple val(specimen), path("barcode_counts.csv.gz")
@@ -87,7 +88,7 @@ process plot_barcodes {
 
 // Apply the corrected barcode sequences to the FASTQ data
 process update_barcodes {
-    container "${params.container__pysam}"
+    container "${params.container__pandas}"
 
     input:
     tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")
@@ -143,5 +144,6 @@ workflow barcodes_wf{
 
     emit:
     reads = update_barcodes.out.reads
+    csv = correct_barcode_errors.out
 
 }

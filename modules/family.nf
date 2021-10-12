@@ -5,7 +5,7 @@ nextflow.enable.dsl=2
 
 // Break up the aligned reads for each specimen into shards for processing
 process shard {
-    container "${params.container__pysam}"
+    container "${params.container__pandas}"
     
     input:
     tuple val(specimen), path(bam), path(barcodes_csv_gz)
@@ -20,7 +20,7 @@ process shard {
 
 // Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
 process extract_positions {
-    container "${params.container__pysam}"
+    container "${params.container__pandas}"
     
     input:
     tuple val(specimen), val(shard_ix), path(bam)
@@ -30,6 +30,23 @@ process extract_positions {
 
     script:
     template 'extract_positions.py'
+
+}
+
+// Group reads into families which share the same
+// barcode and alignment position. The family ID
+// will be encoded in the attached CSV by this step
+process assign_families {
+    container "${params.container__pandas}"
+    
+    input:
+    tuple val(specimen), val(shard_ix), path("read_positions.csv.gz")
+
+    output:
+    tuple val(specimen), val(shard_ix), path("families.csv.gz")
+
+    script:
+    template 'assign_families.py'
 
 }
 

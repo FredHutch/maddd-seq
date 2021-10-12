@@ -11,7 +11,7 @@ output_fp = "read_positions.csv.gz"
 print(f"Writing output to {output_fp}")
 
 # Define the columns in the CSV output
-header = ['id', 'direction', 'strand', 'chr', 'pos']
+header = ['id', 'direction', 'strand', 'chr', 'pos', 'barcode']
 def write_csv(d, handle):
     """Write out one line of the CSV."""
     handle.write(
