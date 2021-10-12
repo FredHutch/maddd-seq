@@ -106,9 +106,10 @@ def write_ssc(family_reads):
             # If there were reads from both strands
             if cons_dict is not None:
 
-                # Both of the -fwd and -rev sequences must be the same length
+                # Both of the -R1 and -R2 sequences must be the same length, and
+                # the FWD and REV sequences cannot overhang the end of the molecules
                 for d in ['fwd', 'rev']:
-                    cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"] = trim_same_length(cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"])
+                    cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"] = trim_sscs(cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"])
 
                 # Write out each read
                 write_fastq(cons_dict["R1-fwd"], FWD_R1_HANDLE)
@@ -231,11 +232,24 @@ def encode_quals(quals):
     return "".join([chr(n + 33) for n in quals])
 
 
-def trim_same_length(r1, r2):
+def trim_sscs(r1, r2):
     """The reads from both strands must be the same length."""
 
     # Find the length of the shorter read
     min_len = min([len(r1[1]), len(r2[1])])
+
+    # It's also very important that the length of the read does
+    # not overhang the end of the molecule
+
+    # First parse the size of the insert from the family name
+    _, _, fwd_pos, rev_pos = r1[0].split("-")
+
+    # Calculate the insert size
+    insert_size = int(rev_pos) - int(fwd_pos)
+    assert insert_size > 0
+
+    # The read length cannot be longer than the insert size
+    min_len = min([min_len, insert_size])
 
     # Trim down to the minimum length
     r1 = (r1[0], r1[1][:min_len], r1[2][:min_len])
