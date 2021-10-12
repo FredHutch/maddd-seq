@@ -5,8 +5,8 @@ import pandas as pd
 # Read in the input data
 df = pd.read_csv("read_positions.csv.gz")
 
-def assign_families(bc_seq, bc_df):
-    """Assign the family label for the reads with the same barcode."""
+
+def filter_single_pair(bc_df):
 
     # Count up the number of alignments for each read on each strand (R1/R2)
     vc = bc_df.groupby(['id', 'strand']).apply(len)
@@ -20,7 +20,10 @@ def assign_families(bc_seq, bc_df):
     if len(reads_to_keep) == 0:
         return
 
-    bc_df = bc_df.loc[bc_df['id'].isin(reads_to_keep)]
+    return bc_df.loc[bc_df['id'].isin(reads_to_keep)]
+
+
+def filter_both_directions(bc_df):
 
     # Count up the number of alignments for each read in each direction (fwd/rev)
     vc = bc_df.groupby(['id', 'direction']).apply(len)
@@ -34,8 +37,11 @@ def assign_families(bc_seq, bc_df):
     if len(reads_to_keep) == 0:
         return
 
-    bc_df = bc_df.loc[bc_df['id'].isin(reads_to_keep)]
+    return bc_df.loc[bc_df['id'].isin(reads_to_keep)]
 
+
+def get_flanking_positions(bc_df, bc_seq):
+    
     # For each read, get the start positions of the fwd and reverse reads
     read_df = bc_df.pivot(
         index=["id", "chr"],
@@ -61,6 +67,21 @@ def assign_families(bc_seq, bc_df):
         columns=['id', 'family']
     )
 
+    return read_df
+
+def assign_families(bc_seq, bc_df):
+    """Assign the family label for the reads with the same barcode."""
+
+    bc_df = filter_single_pair(bc_df)
+    if bc_df is None:
+        return
+
+    bc_df = filter_both_directions(bc_df)
+    if bc_df is None:
+        return
+
+    read_df = get_flanking_positions(bc_df, bc_seq)
+    
     return read_df
 
 # Make families for barcode independently
