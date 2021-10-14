@@ -12,6 +12,8 @@ params.genome = false
 // Quality trimming
 params.min_qvalue = 20
 params.min_align_score = 40
+params.RD1_ADAPTER_3P = "GATCGGAAGAGCACACGTCTGAACTCCAGTC"
+params.RD2_ADAPTER_3P = "GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
 
 // Unique molecular tags
 params.barcode_length = 12
