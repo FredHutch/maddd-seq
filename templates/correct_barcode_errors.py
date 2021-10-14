@@ -10,7 +10,9 @@ A barcode will be assigned to a 'corrected' sequence if:
 
 from collections import defaultdict
 from bitarray import bitarray
+from functools import lru_cache
 import logging
+import os
 import pandas as pd
 import re
 
@@ -28,6 +30,16 @@ logger.addHandler(consoleHandler)
 
 logger.info("Processing specimen ${specimen}")
 
+# FILE CONTAINING BARCODES
+barcodes_txt = "barcodes.txt"
+logger.info(f"Reading barcodes from {barcodes_txt}")
+assert os.path.exists(barcodes_txt)
+
+# EXPECTED LENGTH OF BARCODES
+barcode_len = ${params.barcode_length}
+logger.info(f"All barcodes should be {barcode_len}bp")
+assert isinstance(barcode_len, int)
+
 # MAXIMUM HOMOPOLYMER LENGTH
 max_homopolymer = int("${params.barcode_max_homopolymer}")
 logger.info(f"Removing any barcodes with homopolymers longer than {max_homopolymer}bps")
@@ -38,6 +50,36 @@ logger.info(f"Maximum barcode mismatch: {max_barcode_mismatch}")
 
 fp_out = "barcode_corrections.csv.gz"
 logger.info(f"Using output path: {fp_out}")
+
+
+def read_barcodes(fp):
+    """Read in the list of whitelist barcodes."""
+
+    # Make a list of barcodes
+    barcodes = list()
+
+    # Open the file
+    with open(fp, "r") as handle:
+
+        # Iterate over each line
+        for line in handle:
+
+            # Strip off the newline character
+            bc = line.rstrip("\\n")
+
+            # If the line is empty
+            if len(bc) == 0:
+
+                # Skip it
+                continue
+
+            # Make sure that the barcode is the expected length
+            assert len(bc) == barcode_len, len(bc)
+
+            # Add it to the list
+            barcodes.append(bc)
+
+    return barcodes
 
 
 def hamming_distance(s1, s2):
@@ -115,107 +157,103 @@ def get_kmers(bc, k, step=4):
         yield bc[i: (i + k)]
 
 
+def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
+    """Compute the corrected barcode for a merged barcode."""
+
+    # The input barcode sequence starts with a prefix, which
+    # should be removed prior to parsing
+    assert bc_tag.startswith(tag_prefix)
+    bc = bc_tag[len(tag_prefix):]
+
+    # The length of the barcode should be 2x the individual barcode length
+    assert len(bc) == barcode_len * 2, bc
+
+    # Split up the barcode into each half, starting with the left half
+    left_bc = correct_barcode(bc[:barcode_len])
+
+    # If there was no match found
+    if left_bc is None:
+
+        # Then the merged barcode will be thrown out
+        return None
+
+    # Now correct the right half
+    right_bc = correct_barcode(bc[barcode_len:])
+
+    # If there was no match found
+    if right_bc is None:
+
+        # Then the merged barcode will be thrown out
+        return None
+
+    # At this point, there was a match for both
+    # Return the merged barcode
+    return tag_prefix + left_bc + right_bc
+
+
 # Read in the table of counts
 logger.info("Reading in barcode_counts.csv.gz")
 df = pd.read_csv("barcode_counts.csv.gz")
 
 logger.info(f"Read in a table of {df.shape[0]:,} barcodes over {df['count'].sum():,} read pairs")
 
-# Remove barcodes which fail the quality check
-df = df.loc[df.barcode.apply(passes_quality_filter)]
-logger.info(f"After filtering on homopolymers and N's {df.shape[0]:,} barcodes remain over {df['count'].sum():,} read pairs")
+# Read the list of barcodes
+whitelist = read_barcodes(barcodes_txt)
 
-# Sort by the number of read pairs
-df = df.sort_values(by='count').reset_index(drop=True)
-logger.info("Sorted barcodes by increasing counts")
+logger.info(f"Read in a list of {len(whitelist):,} whitelist barcodes")
 
-# For rapid hashing, pull out the even and the odd positions
-# and add them to a dedicated columns, 
-# since we can only compare those barcodes which share
-# a large amount of sequence (for compute limitations)
-df = df.assign(
-    evens=df.barcode.apply(lambda s: s[::2]),
-    odds=df.barcode.apply(lambda s: s[1::2]),
-)
-logger.info("Annotated barcode prefixes and suffixes")
 
-# Make a dictionary linking each barcode to its error-corrected form
-corrected = dict()
+# The function below is being defined after reading in the whitelist
+# so that the caching decorator can be used most effectively
+@lru_cache
+def correct_barcode(bc):
 
-# Join barcodes first by prefix, then by suffix
-for cname in ['evens', 'odds']:
-    logger.info(f"Joining barcodes by {cname}")
+    # First check for an exact match
+    for whitelist_bc in whitelist:
+        if bc == whitelist_bc:
+            return whitelist_bc
 
-    # Get the counts for each prefix/suffix
-    cname_vc = df[cname].value_counts()
+    # Next, calculate the hamming distance for each
+    whitelist_distances = {
+        whitelist_bc: hamming_distance(whitelist_bc, bc)
+        for whitelist_bc in whitelist_bc
+    }
 
-    # Get the mask for barcodes with a prefix/suffix which is found >1 times
-    cname_ix = df[cname].apply(cname_vc.get) > 1
+    # Get the lowest hamming distance
+    lowest_distance = min(whitelist_distances.values())
 
-    logger.info(f"Found {cname_ix.sum():,} barcodes with a shared {cname}")
+    # If that distance meets the threshold
+    if lowest_distance <= max_barcode_mismatch:
 
-    group_counter = 0
-    bc_counter = 0
+        # Get the whitelist barcodes which are at that minimum
+        best_whitelist_bcs = [
+            bc
+            for bc, d in whitelist_distances.items()
+            if d == lowest_distance
+        ]
 
-    # Iterate over each group
-    for shared_seq, shared_df in df.loc[cname_ix].groupby(cname):
+        # If there is only a single best match
+        if len(best_whitelist_bcs) == 1:
 
-        group_counter += 1
+            # Then return it
+            return best_whitelist_bcs[0]
 
-        # For each barcode in this group
-        for i, i_r in shared_df.iterrows():
+    # If there was no single best match which met the threshold
+    return None
 
-            bc_counter += 1
 
-            # If this barcode has already been corrected
-            if i_r.barcode in corrected:
-
-                # Skip it
-                continue
-
-            # If another barcode has been corrected to this one
-            if i_r.barcode in corrected.values():
-
-                # Skip it
-                continue
-
-            # If this barcode has not yet been corrected
-            else:
-
-                # Iterate over the other barcodes, starting from the greatest counts
-                for j, j_r in shared_df[::-1].iterrows():
-
-                    # If the other barcode has been corrected already
-                    if j_r['barcode'] in corrected:
-
-                        # Skip it
-                        continue
-
-                    # If the second barcode has greater counts
-                    if j_r['count'] > i_r['count']:
-
-                        # If the hamming distance is below the threshold
-                        if hamming_distance(i_r['barcode'], j_r['barcode']) <= max_barcode_mismatch:
-
-                            # The i'th barcode should be corrected to the j'th
-                            corrected[i_r['barcode']] = j_r['barcode']
-
-            if bc_counter > 0 and bc_counter % 10000 == 0:
-                logger.info(f"Compared {bc_counter:,} barcodes across {group_counter:,} groups, assigned corrected barcodes for {len(corrected):,} barcodes")
-
-logger.info(f"Assigned corrected barcodes for {len(corrected):,} barcodes")
-
-# Add the corrected barcode to the table
+# Add a column to the DataFrame with the corrected barcode
+# If there is no match to the whitelist, the populated value will be None
 df = df.assign(
     corrected=df['barcode'].apply(
-        lambda s: corrected.get(s, s)
+        lambda bc: correct_merged_barcode(bc)
     )
-).drop(
-    columns=['evens', 'odds']
-).sort_values(
-    by="count",
-    ascending=False
 )
+
+# Drop any barcodes which could not be corrected
+df = df.dropna()
+assert df.shape[0] > 0, "Could not find any barcode matches"
+logger.info(f"Output: {df.shape[0]:,} barcodes with {df['count'].sum():,} total counts")
 
 # Write to the file
 logger.info(f"Writing out to {fp_out}")

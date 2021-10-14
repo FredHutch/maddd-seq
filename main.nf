@@ -8,6 +8,7 @@ params.help = false
 params.sample_sheet = false
 params.output = false
 params.genome = false
+params.barcodes = false
 
 // Quality trimming
 params.min_qvalue = 20
@@ -16,7 +17,7 @@ params.RD1_ADAPTER_3P = "GATCGGAAGAGCACACGTCTGAACTCCAGTC"
 params.RD2_ADAPTER_3P = "GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
 
 // Unique molecular tags
-params.barcode_length = 12
+params.barcode_length = 6
 params.barcode_max_homopolymer = 6
 params.max_barcode_mismatch = 2
 
@@ -63,11 +64,14 @@ Required Arguments:
   --sample_sheet        CSV file listing samples with headers: specimen, R1, and R2
   --output              Folder to write output files to
   --genome              Reference genome indexed for alignment by BWA
+  --barcodes            Path to text file containing the barcode whitelist
 
 Optional Arguments:
   --min_qvalue          Minimum quality score used to trim data (default: ${params.min_qvalue})
   --min_align_score     Minimum alignment score (default: ${params.min_align_score})
   --barcode_length      Length of the barcodes ligated to the 5' end of each read
+                        This should correspond to the length of every entry in
+                        the barcode text file specified with --barcodes.
                         (default: ${params.barcode_length})
   --barcode_max_homopolymer
                         Maximum number of repeated bases in barcode sequences
@@ -79,6 +83,11 @@ Optional Arguments:
                         ligated barcode sequences are removed
   --n_shards            Number of parallel processes to use for creating families
                         (default: ${params.n_shards})
+  --RD1_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
+                        of the R1 (default: ${params.RD1_ADAPTER_3P})
+  --RD2_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
+                        of the R2 (default: ${params.RD2_ADAPTER_3P})
+
 
 Manifest:
   The manifest is a CSV listing all of the duplex sequencing data to be analyzed.
@@ -124,7 +133,8 @@ workflow {
     // This part of the workflow will also perform error
     // correction on the barcode sequences.
     barcodes_wf(
-        quality_wf.out.reads
+        quality_wf.out.reads,
+        file(params.barcodes)
     )
     // output:
     //   bam:

@@ -61,6 +61,7 @@ process correct_barcode_errors {
 
     input:
     tuple val(specimen), path("barcode_counts.csv.gz")
+    path "barcodes.txt"
 
     output:
     tuple val(specimen), path("barcode_corrections.csv.gz")
@@ -105,6 +106,7 @@ workflow barcodes_wf{
 
     take:
     fastq_ch
+    barcodes_txt
 
     main:
 
@@ -124,7 +126,8 @@ workflow barcodes_wf{
 
     // Perform error correction on the barcodes
     correct_barcode_errors(
-        clip_barcodes.out.counts
+        clip_barcodes.out.counts,
+        barcodes_txt
     )
 
     // Make plots summarizing the barcodes
