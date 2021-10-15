@@ -14,19 +14,24 @@ echo "${ref}" | tr ' ' '\n'
 GENOME=\$(echo "${ref}" | tr ' ' '\\n' | grep '.amb' | sed 's/.amb//' )
 echo "Reference genome prefix: \$GENOME"
 
-echo "Running BWA MEM"
+echo "Running BWA MEM, filtering out unmapped and secondary alignments, and sorting"
 bwa \
     mem \
-    -a \
     -t ${task.cpus} \
     -T ${params.min_align_score} \
     -C \
     "\$GENOME" \
     ${R1} \
-    ${R2} \
-| samtools \
+    ${R2} | \
+samtools \
+    view \
+    -F 722 \
+    -h \
+    -b | \
+samtools \
     sort \
     --threads ${task.cpus} \
-    -o aligned.bam -
+    -o \
+    aligned.bam
 
 echo "DONE"
