@@ -3,21 +3,6 @@
 // Using DSL-2
 nextflow.enable.dsl=2
 
-// Break up the aligned reads for each specimen into shards for processing
-process shard {
-    container "${params.container__pandas}"
-    
-    input:
-    tuple val(specimen), path(bam), path(barcodes_csv_gz)
-
-    output:
-    tuple val(specimen), path("shard.*.bam")
-
-    script:
-    template 'shard.py'
-
-}
-
 // Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
 process extract_positions {
     container "${params.container__pandas}"
@@ -101,26 +86,12 @@ process filter_ssc {
 workflow family_wf{
 
     take:
-    bam_ch
-    // tuple val(specimen), path(bam), path(barcodes_csv_gz)
+    shard_ch
+    // tuple val(specimen), val(shard_ix), path(bam), path(barcodes_csv_gz)
     ref
     // Pre-compiled genome reference
 
     main:
-
-    // Break up the aligned BAM into shards which
-    // each contain a set of barcodes
-    shard(
-        bam_ch
-    )
-    // output:
-    // tuple val(specimen), path("shard.*.bam")
-
-    // The output of shard() needs to be transformed to
-    // tuple val(specimen), val(shard_ix), path(bam)
-    shard_ch = shard.out.transpose().map {
-        [it[0], it[1].name.replaceAll('.bam', ''), it[1]]
-    }
 
     // Extract the ID, position, orientation, chromosome,
     // and R1/R2 for each alignment

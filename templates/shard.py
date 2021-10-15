@@ -3,14 +3,15 @@
 import gzip
 import os
 import pysam
+import pandas as pd
 
-bam_fp = '${bam}'
-print(f"Input BAM: {bam_fp}")
-assert os.path.exists(bam_fp)
+read1_fp = '${R1}'
+print(f"Read 1 FASTQ: {read1_fp}")
+assert os.path.exists(read1_fp)
 
-barcodes_csv_gz = '${barcodes_csv_gz}'
-print(f"Input CSV: {barcodes_csv_gz}")
-assert os.path.exists(barcodes_csv_gz)
+read2_fp = '${R2}'
+print(f"Read 2 FASTQ: {read2_fp}")
+assert os.path.exists(read2_fp)
 
 # Interpolate the number of shards from the nextflow param
 # this will look odd when linting this particular file, but
@@ -18,41 +19,14 @@ assert os.path.exists(barcodes_csv_gz)
 n_shards = ${params.n_shards}
 print(f"Splitting into {n_shards:,} shards")
 
-def yield_csv_gz(fp):
-    """Yield each row of a CSV as a dict."""
-
-    # Open the file
-    with gzip.open(fp, 'rt') as handle:
-    
-        # Get the header
-        header = handle.readline().rstrip("\\n").split(",")
-
-        # Iterate over the subsequent lines
-        for i, line in enumerate(handle):
-
-            # Yield the row as a dict
-            yield i, dict(zip(header, line.rstrip("\\n").split(",")))
-
 # Assign each corrected barcode to a shard index
 shard_ix = dict()
 
-# Iterate over each row in the CSV
-for i, r in yield_csv_gz(barcodes_csv_gz):
+# Build a set with the unique barcodes observed so far
+unique_barcodes = set()
 
-    # The corrected barcode sequence starts with "BC:Z"
-    assert r["corrected"].startswith("BC:Z:")
-    corrected = r["corrected"][len("BC:Z:"):]
-
-    # If we haven't assigned this corrected barcode yet
-    if shard_ix.get(corrected) is None:
-
-        # Assign the shard IX based on the row number
-        shard_ix[corrected] = i % n_shards
-
-print(f"Assigned shards for {len(shard_ix)} barcodes")
-
-# Open the input file
-with pysam.AlignmentFile(bam_fp, "r") as bam:
+# Open both of the input files
+with pysam.FastxFile(read1_fp) as i_1, pysam.FastxFile(read2_fp) as i_2:
 
     # Open a file handle for each of the shards
     print(f"Opening {n_shards:,} output file handles")
@@ -61,39 +35,56 @@ with pysam.AlignmentFile(bam_fp, "r") as bam:
     # Iterate over 0..n_shards
     for i in range(n_shards):
 
-        # Open the output file handle, using the header from the input
-        output_handles[i] = pysam.AlignmentFile(
-            f"shard.{i}.bam", 
-            "wb",
-            template=bam
-        )
+        # Open the output file handles, one for each read
+        output_handles[i] = [
+            gzip.open(f"shard.{i}.R{R}.fastq.gz", "wt")
+            for R in [1, 2]
+        ]
 
     counter = 0
-    filtered = 0
 
     # Iterate over the reads
-    for read in bam:
+    for read1, read2 in zip(i_1, i_2):
 
-        # Get the shard for this barcode
-        ix = shard_ix.get(read.get_tag('BC'))
+        # The ID for each read should match
+        assert read1.name == read2.name, (read1.name, read2.name)
 
-        # If there is one
-        if ix is not None:
+        # The barcode for each read should match
+        assert read1.comment == read2.comment, (read1.comment, read2.comment)
 
-            # Write out to the file for the shard
-            output_handles[ix].write(read)
+        # If we haven't seen this barcode before
+        if read1.comment not in unique_barcodes:
+
+            # Then we can assign a new index for the barcode
+            # in the range(n_shards)
+            shard_ix[read1.comment] = len(unique_barcodes) % n_shards
+
+            # And add it to the set
+            unique_barcodes.add(read1.comment)
+
+        # For each of the reads
+        for read_i, read in enumerate([read1, read2]):
+
+            # Write out to the output handle
+            output_handles[
+                shard_ix[read1.comment]
+            ][
+                read_i
+            ].write(
+                str(read)
+            )
+
+            # Increment the counter
             counter += 1
 
-        else:
-            filtered += 1
-
-print(f"Wrote out {counter:,} reads")
+print(f"Wrote out {counter:,} read pairs")
 assert counter > 0
-print(f"Filtered out {filtered:,} reads with non-matching barcodes")
 
 # Close all of the file handles
 print(f"Closing {n_shards:,} output file handles")
-for i, handle in output_handles.items():
-    handle.close()
+for i, handle_list in output_handles.items():
+    # Close both the R1 and the R2 output handles
+    for handle in handle_list:
+        handle.close()
 
 print("DONE")
