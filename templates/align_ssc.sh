@@ -35,6 +35,9 @@ NEG SSC_FWD_R2 SSC_REV_R1""" | while read STRAND FWD REV; do
         <(gunzip -c \$FWD/*) \
         <(gunzip -c \$REV/*) \
     | samtools \
+        view \
+        -f 2 | \
+    samtools \
         sort \
         --threads ${task.cpus} \
         -o \$STRAND.SSC.bam -
