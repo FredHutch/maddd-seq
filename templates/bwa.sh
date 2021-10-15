@@ -25,7 +25,7 @@ bwa \
     ${R2} | \
 samtools \
     view \
-    -F 722 \
+    -f 2 \
     -h \
     -b | \
 samtools \
