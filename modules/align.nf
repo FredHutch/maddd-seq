@@ -38,16 +38,31 @@ process bwa {
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
-    publishDir "${params.output}/4_aligned/${specimen}/", mode: 'copy', overwrite: true
     
     input:
-    tuple val(specimen), path(bam)
+    tuple val(specimen), val(shard_ix), path(bam)
 
     output:
-    file "${specimen}.flagstats"
+    tuple val(specimen), path("${shard_ix}.flagstats")
 
     script:
     template 'flagstats.sh'
+
+}
+
+// Join flagstats across shards per specimen
+process join_flagstats {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/${specimen}/", mode: 'copy', overwrite: true
+    
+    input:
+    tuple val(specimen), path("*")  // "${shard_ix}.flagstats"
+
+    output:
+    path "${specimen}.flagstats"
+
+    script:
+    template 'join_flagstats.py'
 
 }
 
@@ -92,11 +107,14 @@ workflow align_wf{
     // Align all of the reads
     bwa(shard_ch, ref)
 
-    // Count up the number of aligned reads to each contig
+    // Count up the number of aligned reads to each contig per shard
     flagstats(bwa.out.bam)
 
+    // Join flagstats across shards, for each specimen
+    join_flagstats(flagstats.out.groupTuple())
+
     // Assemble a report on the number of reads mapped per specimen
-    multiqc_flagstats(flagstats.out.toSortedList())
+    multiqc_flagstats(join_flagstats.out.toSortedList())
 
     emit:
     bam = bwa.out.bam

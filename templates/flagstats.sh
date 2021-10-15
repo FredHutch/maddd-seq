@@ -3,4 +3,4 @@
 set -Eeuo pipefail
 
 # Count up the number of aligned reads
-samtools flagstats "${bam}" > "${specimen}.flagstats"
+samtools flagstats "${bam}" > "${shard_ix}.flagstats"
