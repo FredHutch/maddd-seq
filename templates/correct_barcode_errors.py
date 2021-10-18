@@ -177,6 +177,9 @@ def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
         # Then the merged barcode will be thrown out
         return None
 
+    # Make sure that the corrected barcode is the correct length
+    assert len(left_bc) == barcode_len, (bc[:barcode_len], left_bc)
+
     # Now correct the right half
     right_bc = correct_barcode(bc[barcode_len:])
 
@@ -185,6 +188,9 @@ def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
 
         # Then the merged barcode will be thrown out
         return None
+
+    # Make sure that the corrected barcode is the correct length
+    assert len(right_bc) == barcode_len, (bc[barcode_len:], right_bc)
 
     # At this point, there was a match for both
     # Return the merged barcode
@@ -216,7 +222,7 @@ def correct_barcode(bc):
     # Next, calculate the hamming distance for each
     whitelist_distances = {
         whitelist_bc: hamming_distance(whitelist_bc, bc)
-        for whitelist_bc in whitelist_bc
+        for whitelist_bc in whitelist
     }
 
     # Get the lowest hamming distance
