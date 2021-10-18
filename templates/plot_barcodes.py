@@ -6,35 +6,39 @@ import matplotlib.pyplot as plt
 
 # Read in the raw barcodes
 raw_df = pd.read_csv("barcode_counts.csv.gz")
-
-def plot_hist(v, l, log_scale=(True, True), bins=100):
-    """Plot a histogram following a similar pattern"""
-    sns.histplot(
-        x=v,
-        log_scale=log_scale,
-        bins=bins
-    )
-    plt.xlabel(f'Number of reads per {l} barcode')
-    plt.ylabel('Number of barcodes')
-    plt.title(f'Barcodes - {l}')
-    plt.savefig(f'barcodes.{l}.pdf', bbox_inches='tight')
-    plt.close()
-
-# Make a plot showing the frequency distribution of RAW barcodes
-plot_hist(
-    raw_df['count'],
-    l='raw'
-)
+print(f"Read in {raw_df.shape[0]:,} lines from barcode_counts.csv.gz")
 
 # Read in the corrected barcodes
 corr_df = pd.read_csv("barcode_corrections.csv.gz")
+print(f"Read in {corr_df.shape[0]:,} lines from barcode_corrections.csv.gz")
 
 # Subset the original table to those barcodes which were filtered out
 filtered_barcodes = set(raw_df['barcode'].tolist()) - set(corr_df['barcode'].tolist())
+print(f"Number of barcodes filtered out: {len(filtered_barcodes):,}")
 filt_df = raw_df.loc[raw_df['barcode'].isin(filtered_barcodes)]
 
-# Make a plot showing the frequency distribution of barcodes which were filtered out
-plot_hist(filt_df['count'], 'removed')
+plot_df = pd.concat(
+    [
+        filt_df['count'].value_counts().reset_index().assign(label='Filtered Out'),
+        corr_df.groupby('corrected')['count'].sum().value_counts().reset_index().assign(label='After Correction'),
+        raw_df['count'].value_counts().reset_index().assign(label='Raw Barcodes'),
+        
+    ]
+).rename(
+    columns=dict(index="nreads", count="nbarcodes")
+).reset_index(drop=True)
 
-# Make a plot showing the frequency distribution of CORRECTED barcodes
-plot_hist(corr_df.groupby('corrected')['count'].sum(), 'corrected')
+g = sns.lineplot(
+    data=plot_df,
+    x="nreads",
+    y='nbarcodes',
+    hue='label'
+)
+g.legend_.set_title(None)
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel("Number of reads per barcode")
+plt.ylabel("Number of barcode per bin")
+plt.title("Barcode Frequency Histogram")
+plt.savefig("${specimen}.barcodes.pdf")
+print("DONE")

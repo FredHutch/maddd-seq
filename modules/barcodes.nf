@@ -80,7 +80,7 @@ process plot_barcodes {
     tuple val(specimen), path("barcode_counts.csv.gz"), path("barcode_corrections.csv.gz")
 
     output:
-    path "barcodes.*.pdf"
+    path "${specimen}.barcodes.pdf"
 
     script:
     template 'plot_barcodes.py'
