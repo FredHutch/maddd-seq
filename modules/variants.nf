@@ -23,7 +23,7 @@ process filter_ssc_depth {
 // Parse the SSC data
 process parse_ssc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/4_aligned/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
