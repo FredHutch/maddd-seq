@@ -34,6 +34,9 @@ params.repeat_masker = false
 params.bed = false
 params.max_family_offset = 5
 params.min_reads_per_ssc = 3
+// Maximum distance that an SSC may change position after realignment
+params.max_realign_offset = 5
+
 
 // Set the containers to use for each component
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
@@ -83,6 +86,8 @@ Optional Arguments:
                         ligated barcode sequences are removed
   --n_shards            Number of parallel processes to use for creating families
                         (default: ${params.n_shards})
+  --max_realign_offset  Maximum distance that an SSC may change position after realignment
+                        (default: ${params.max_realign_offset})
   --RD1_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
                         of the R1 (default: ${params.RD1_ADAPTER_3P})
   --RD2_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
