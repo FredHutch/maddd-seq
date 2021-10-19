@@ -71,7 +71,7 @@ with pysam.FastxFile(read1_fp) as i_1, pysam.FastxFile(read2_fp) as i_2:
             ][
                 read_i
             ].write(
-                str(read)
+                str(read) + "\\n"
             )
 
             # Increment the counter
