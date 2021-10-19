@@ -54,6 +54,11 @@ def get_flanking_positions(bc_df, bc_seq):
         by="fwd"
     ).reset_index()
 
+    # The reverse read must be downstream of the forward read
+    read_df = read_df.loc[
+        read_df['fwd'] < read_df['rev']
+    ]
+
     # Assign a unique family ID to each set of reads which align
     # to the same fwd and rev positions
     read_family = {
