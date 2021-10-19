@@ -43,7 +43,7 @@ process make_ssc {
     tuple val(specimen), val(shard_ix), path("families.csv.gz"), path(bam)
 
     output:
-    tuple val(specimen), val(shard_ix), path("FWD.R1.fastq.gz"), path("FWD.R2.fastq.gz"), path("REV.R1.fastq.gz"), path("REV.R2.fastq.gz"), path("${shard_ix}.stats.csv.gz")
+    tuple val(specimen), val(shard_ix), path("${shard_ix}.FWD.R1.fastq.gz"), path("${shard_ix}.FWD.R2.fastq.gz"), path("${shard_ix}.REV.R1.fastq.gz"), path("${shard_ix}.REV.R2.fastq.gz"), path("${shard_ix}.stats.csv.gz")
 
     script:
     template 'make_ssc.py'
@@ -59,7 +59,7 @@ process align_ssc {
     path ref
 
     output:
-    tuple val(specimen), val(shard_ix), path("POS.SSC.bam"), path("NEG.SSC.bam")
+    tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam")
 
     script:
     template 'align_ssc.sh'
@@ -68,9 +68,9 @@ process align_ssc {
 
 // Filter out any re-aligned sequences whose anchor (outermost) coordinates
 // have changed after the realignment of SSCs
-process filter_ssc {
+process filter_ssc_position {
     container "${params.container__pandas}"
-    publishDir "${params.output}/6_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_all_SSC/${specimen}/", mode: 'copy', overwrite: true
     
     input:
     tuple val(specimen), path("realigned.POS.SSC.bam"), path("realigned.NEG.SSC.bam"), path("SSC_STATS/*.csv.gz")
@@ -79,15 +79,15 @@ process filter_ssc {
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
 
     script:
-    template 'filter_ssc.py'
+    template 'filter_ssc_position.py'
 
 }
 
 workflow family_wf{
 
     take:
-    shard_ch
-    // tuple val(specimen), val(shard_ix), path(bam), path(barcodes_csv_gz)
+    bam_shard_ch
+    // tuple val(specimen), val(shard_ix), path(bam)
     ref
     // Pre-compiled genome reference
 
@@ -96,7 +96,7 @@ workflow family_wf{
     // Extract the ID, position, orientation, chromosome,
     // and R1/R2 for each alignment
     extract_positions(
-        shard_ch
+        bam_shard_ch
     )
 
     // Group reads into families which share the same
@@ -111,7 +111,7 @@ workflow family_wf{
     make_ssc(
         assign_families
             .out
-            .combine(shard_ch, by: [0, 1])
+            .combine(bam_shard_ch, by: [0, 1])
     )
     // input:
     //   tuple val(specimen), val(shard_ix), path(families_csv_gz), path(R1), path(R2)
@@ -145,15 +145,17 @@ workflow family_wf{
     // Filter out any re-aligned sequences whose anchor (outermost) coordinates
     // have changed after the realignment of SSCs
     SSC_STATS = make_ssc.out.map { [it[0], it[6]] }.groupTuple()
-    filter_ssc(
+    filter_ssc_position(
         align_ssc
             .out
             .join(SSC_STATS)
     )
     // input:
     //   tuple val(specimen), path(POS_BAM), path(NEG_BAM), path(SSC_STATS/*csv.gz)
+    // output:
+    //   tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
 
     emit:
-    bam = filter_ssc.out
+    bam = filter_ssc_position.out
 
 }
