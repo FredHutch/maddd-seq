@@ -10,6 +10,7 @@ Parse the SSC data in order to:
 """
 
 from collections import defaultdict
+import gzip
 import json
 import os
 import pandas as pd
@@ -23,7 +24,7 @@ assert os.path.exists(input_neg_bam)
 
 
 # Output path for the total summarized data
-total_output = "summary.json"
+total_output = "summary.json.gz"
 print(f"Output path: {total_output}")
 
 # Output path for the data grouped by contig
@@ -424,6 +425,12 @@ def format_output(ssc_dat):
                     )[ref_base]
                 ][adduct_base] += 1
 
+    # Add all of the subset data to the totals
+    total_counts['specimen'] = "${specimen}"
+    total_counts['by_chr'] = chr_counts
+    total_counts['snp_base_changes'] = snp_base_changes
+    total_counts['adduct_base_changes'] = adduct_base_changes
+
     # Format the base change data as DataFrames
     snp_base_changes = pd.DataFrame(snp_base_changes).reindex(
         columns=['A', 'T', 'C', 'G'],
@@ -449,11 +456,11 @@ ssc_dat, base_positions = merge_strands(pos_ssc, neg_ssc)
 total, by_chr, snp_base_changes, adduct_base_changes = format_output(ssc_dat)
 
 # Save the total information to JSON
-with open(total_output, "w") as handle:
+with gzip.open(total_output, "wt") as handle:
     json.dump(total, handle)
 
 # Save the by-chr information to CSV
-by_chr.to_csv(chr_output, index=None)
+by_chr.to_csv(chr_output)
 
 # Save the SNP by-base information to CSV
 snp_base_changes.to_csv(snps_base_output)
