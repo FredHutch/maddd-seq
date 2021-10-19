@@ -7,6 +7,7 @@ from io import StringIO
 import gzip
 from math import ceil
 import os
+from Bio.Seq import reverse_complement
 import pandas as pd
 import pysam
 
@@ -26,8 +27,11 @@ assert os.path.exists(bam)
 min_base_prop = ${params.min_base_prop}
 print(f"Minimum proportion of bases required for consensus: {min_base_prop}")
 
+# Get the shard index, used to name the outputs
+shard_ix = "${shard_ix}"
+
 # Output file for the stats
-stats_csv = "${shard_ix}.stats.csv.gz"
+stats_csv = f"{shard_ix}.stats.csv.gz"
 
 
 # READ IN THE FAMILY ASSIGNMENT PER READ
@@ -86,10 +90,10 @@ def write_ssc(family_reads):
     """Write out the consensus for each part of each family, return a summary table."""
 
     # OUTPUT FILEPATHS
-    FWD_R1 = "FWD.R1.fastq.gz"
-    REV_R1 = "REV.R1.fastq.gz"
-    FWD_R2 = "FWD.R2.fastq.gz"
-    REV_R2 = "REV.R2.fastq.gz"
+    FWD_R1 = f"{shard_ix}.FWD.R1.fastq.gz"
+    REV_R1 = f"{shard_ix}.REV.R1.fastq.gz"
+    FWD_R2 = f"{shard_ix}.FWD.R2.fastq.gz"
+    REV_R2 = f"{shard_ix}.REV.R2.fastq.gz"
 
     # Make a list of the stats for each family
     ssc_summary = []
@@ -146,6 +150,12 @@ def compute_ssc(family_reads):
 
             # Compute the consensus sequence
             cons_seq, cons_qual = compute_consensus(group_reads)
+
+            # If the reads aligned in the reverse orientation
+            if group_name.endswith("rev"):
+
+                # Take the reverse complement of the sequence
+                cons_seq = reverse_complement(cons_seq)
 
             # Add the consensus sequence to the dict
             group_consensus[group_name] = (family_id, cons_seq, cons_qual)
@@ -246,7 +256,7 @@ def trim_sscs(r1, r2):
 
     # Calculate the insert size
     insert_size = int(rev_pos) - int(fwd_pos)
-    assert insert_size > 0
+    assert insert_size > 0, r1[0]
 
     # The read length cannot be longer than the insert size
     min_len = min([min_len, insert_size])
