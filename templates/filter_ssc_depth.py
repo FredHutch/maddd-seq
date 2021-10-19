@@ -37,32 +37,28 @@ print(f"Read in stats for {ssc_stats.shape[0]:,} SSC families")
 
 def filter_sscs(ssc_stats, min_reads):
     """
-    Filter the SSCs based on the number of reads in both strands.
-    The output will be two sets (fwd_reads, rev_reads), which
-    contain the set of family IDs for those SSCs which should be
-    kept in the FWD and REV directions, respectively.
+    Filter the SSCs based on the number of reads in both strands, from both ends.
     """
 
-    fwd_reads = set(
-        ssc_stats.loc[
-            (ssc_stats["R1-fwd-n"] >= min_reads & ssc_stats["R2-fwd-n"] >= min_reads),
-            'family'
-        ].tolist()
+    keep_reads = set(
+        ssc_stats.query(
+            f"`R1-fwd-n` >= {min_reads}"
+        ).query(
+            f"`R2-fwd-n` >= {min_reads}"
+        ).query(
+            f"`R1-rev-n` >= {min_reads}"
+        ).query(
+            f"`R2-rev-n` >= {min_reads}"
+        )['family'].tolist()
     )
-    rev_reads = set(
-        ssc_stats.loc[
-            (ssc_stats["R1-rev-n"] >= min_reads & ssc_stats["R2-rev-n"] >= min_reads),
-            'family'
-        ].tolist()
-    )
 
-    return fwd_reads, rev_reads
+    return keep_reads
 
 
-def filter_bam(input_bam, output_bam, fwd_reads, rev_reads):
-    """Filter a BAM to just the reads in the defined sets (for forward and reverse reads independently)"""
+def filter_bam(input_bam, output_bam, keep_reads):
+    """Filter a BAM to just the reads in the defined sets"""
 
-    print(f"Preparing to write {len(fwd_reads):,} forward reads and {len(rev_reads):,} reverse reads")
+    print(f"Preparing to write reads from {len(keep_reads):,} families")
     print(f"Writing from {input_bam} to {output_bam}")
 
     # Open the input BAM file for reading
@@ -77,43 +73,41 @@ def filter_bam(input_bam, output_bam, fwd_reads, rev_reads):
             # Iterate over the input
             for read in bam_i:
 
-                # If the read is oriented in the reverse direction
-                if read.is_reverse:
+                # If it is in the set of reads to keep
+                if read.query_name in keep_reads:
 
-                    # And it is in the set of reads to keep
-                    if read.query_name in rev_reads:
+                    # Write it out
+                    bam_o.write(read)
 
-                        # Write it out
-                        bam_o.write(read)
+                    # If the read is oriented in the reverse direction
+                    if read.is_reverse:
+
+                        # Increment the counter
                         rev_counter += 1
 
-                # If it is oriented in the forward direction
-                else:
+                    # If it is oriented in the forward direction
+                    else:
 
-                    # And it is in the set of reads to keep
-                    if read.query_name in fwd_reads:
-
-                        # Write it out
-                        bam_o.write(read)
+                        # Increment the counter
                         fwd_counter += 1
 
     print(f"Wrote out {fwd_counter:,} forward reads")
-    assert len(fwd_reads) == fwd_counter
+    assert len(keep_reads) == fwd_counter
     print(f"Wrote out {rev_counter:,} reverse reads")
-    assert len(rev_reads) == rev_counter
+    assert len(keep_reads) == rev_counter
 
 
 # Filter the SSCs based on the minimum number of reads on both strands
-fwd_reads, rev_reads = filter_sscs(ssc_stats, min_reads)
+keep_reads = filter_sscs(ssc_stats, min_reads)
 
 # Filter the BAM files for both strands
-filter_bam(input_pos_bam, output_pos_bam, fwd_reads, rev_reads)
-filter_bam(input_neg_bam, output_neg_bam, fwd_reads, rev_reads)
+filter_bam(input_pos_bam, output_pos_bam, keep_reads)
+filter_bam(input_neg_bam, output_neg_bam, keep_reads)
 
 # Filter the CSV
 ssc_stats = ssc_stats.loc[
-    ssc_stats['family'].isin(fwd_reads | rev_reads)
+    ssc_stats['family'].isin(keep_reads)
 ]
 print(f"Writing out metrics for {ssc_stats.shape[0]:,} families to {output_stats_csv}")
-assert ssc_stats.shape[0] == len(fwd_reads | rev_reads)
+assert ssc_stats.shape[0] == len(keep_reads)
 ssc_stats.to_csv(output_stats_csv, index=None)
