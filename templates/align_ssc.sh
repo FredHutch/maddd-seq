@@ -37,7 +37,7 @@ NEG SSC_FWD_R2 SSC_REV_R1""" | while read STRAND FWD REV; do
     | samtools \
         view \
         -h \
-        -f 2 | \
+        -F 12 | \
     samtools \
         sort \
         --threads ${task.cpus} \
