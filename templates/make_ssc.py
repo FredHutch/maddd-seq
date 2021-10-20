@@ -39,6 +39,7 @@ def read_family_assignments(families_csv_gz):
 
     # Read in the DataFrame of families (id, family)
     families_df = pd.read_csv(families_csv_gz)
+    print(f"Read in {families_df.shape[0]:,} lines from {families_csv_gz}")
 
     # Return the dictionary linking id -> family
     families = families_df.set_index('id')['family']
@@ -98,6 +99,9 @@ def write_ssc(family_reads):
     # Make a list of the stats for each family
     ssc_summary = []
 
+    # Number of families with data from only one strand
+    n_single = 0
+
     # Open the output handles
     with gzip.open(FWD_R1, 'wt') as FWD_R1_HANDLE, \
         gzip.open(REV_R1, 'wt') as REV_R1_HANDLE, \
@@ -124,8 +128,27 @@ def write_ssc(family_reads):
                 # Add the stats to the list
                 ssc_summary.append(stat)
 
+            # Otherwise
+            else:
+
+                # Increment the counter for single-stranded data
+                n_single += 1
+
+    print(f"SSCs with data from only one strand: {n_single:,}")
+
     # Convert the list of dicts to a DataFrame
     ssc_summary = pd.DataFrame(ssc_summary)
+
+    print(f"Wrote out SSC data for {ssc_summary.shape[0]:,} families")
+
+    # If no reads were written
+    if ssc_summary.shape[0] == 0:
+
+        # Delete the output files
+        for fp in [FWD_R1, FWD_R2, REV_R1, REV_R2]:
+            print(f"Removing output file {fp}")
+            os.remove(fp)
+            assert not os.path.exists(fp)
 
     # Return the family stats
     return ssc_summary
@@ -171,6 +194,9 @@ def compute_ssc(family_reads):
             yield group_consensus, group_stats
 
         else:
+
+            # There must just be reads from one starnd
+            assert len(group_consensus) == 2
             yield None, None
 
 
@@ -311,6 +337,11 @@ family_reads = parse_input_bam(bam, families)
 # ALSO GENERATE SUMMARY METRICS PER EACH SSC
 ssc_summary = write_ssc(family_reads)
 
-# WRITE OUT THE STATS FOR EACH FAMILY
-ssc_summary.to_csv(stats_csv, index=None)
+# IF DATA WAS FOUND
+if ssc_summary.shape[0] > 0:
+
+    # WRITE OUT THE STATS FOR EACH FAMILY
+    ssc_summary.to_csv(stats_csv, index=None)
+    print(f"Wrote out to {stats_csv}")
+
 print("DONE")

@@ -43,7 +43,7 @@ process make_ssc {
     tuple val(specimen), val(shard_ix), path("families.csv.gz"), path(bam)
 
     output:
-    tuple val(specimen), val(shard_ix), path("${shard_ix}.FWD.R1.fastq.gz"), path("${shard_ix}.FWD.R2.fastq.gz"), path("${shard_ix}.REV.R1.fastq.gz"), path("${shard_ix}.REV.R2.fastq.gz"), path("${shard_ix}.stats.csv.gz")
+    tuple val(specimen), val(shard_ix), path("${shard_ix}.FWD.R1.fastq.gz"), path("${shard_ix}.FWD.R2.fastq.gz"), path("${shard_ix}.REV.R1.fastq.gz"), path("${shard_ix}.REV.R2.fastq.gz"), path("${shard_ix}.stats.csv.gz"), optional: true
 
     script:
     template 'make_ssc.py'
