@@ -100,14 +100,24 @@ def filter_bam(input_bam, output_bam, keep_reads):
 # Filter the SSCs based on the minimum number of reads on both strands
 keep_reads = filter_sscs(ssc_stats, min_reads)
 
-# Filter the BAM files for both strands
-filter_bam(input_pos_bam, output_pos_bam, keep_reads)
-filter_bam(input_neg_bam, output_neg_bam, keep_reads)
+# If there are no reads to keep
+if len(keep_reads) == 0:
 
-# Filter the CSV
-ssc_stats = ssc_stats.loc[
-    ssc_stats['family'].isin(keep_reads)
-]
-print(f"Writing out metrics for {ssc_stats.shape[0]:,} families to {output_stats_csv}")
-assert ssc_stats.shape[0] == len(keep_reads)
-ssc_stats.to_csv(output_stats_csv, index=None)
+    print("There are no reads which pass the depth filter for this specimen")
+
+# Otherwise
+else:
+
+    # Filter the BAM files for both strands
+    filter_bam(input_pos_bam, output_pos_bam, keep_reads)
+    filter_bam(input_neg_bam, output_neg_bam, keep_reads)
+
+    # Filter the CSV
+    ssc_stats = ssc_stats.loc[
+        ssc_stats['family'].isin(keep_reads)
+    ]
+    print(f"Writing out metrics for {ssc_stats.shape[0]:,} families to {output_stats_csv}")
+    assert ssc_stats.shape[0] == len(keep_reads)
+    ssc_stats.to_csv(output_stats_csv, index=None)
+
+print("DONE")
