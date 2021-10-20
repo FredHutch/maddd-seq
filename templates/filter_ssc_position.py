@@ -78,12 +78,18 @@ def find_consistent_families(bam_fp):
 
     # Populate a set of read names to keep
     to_keep = set()
+
+    # Initialize the counter
+    i = 0
     
     # Open the BAM file for reading
     with pysam.AlignmentFile(bam_fp, "rb") as bam:
 
         # Iterate over each read
-        for i, read in enumerate(bam):
+        for read in bam:
+
+            # Increment the counter
+            i += 1
 
             # Parse the barcode, chromosome, and position from the read header
             _, cname, fwd_pos, rev_pos = read.query_name.split("-")
@@ -120,6 +126,8 @@ def find_consistent_families(bam_fp):
                         print('rev' if read.is_reverse else 'fwd')
                         print(read.reference_start)
                         print(read.reference_end)
+
+    assert i > 0, "No reads found in input"
 
     print(f"Keeping {len(to_keep):,} / {i+1:,} reads from {bam_fp}")
     return to_keep
