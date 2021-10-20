@@ -23,9 +23,11 @@ input_neg_bam = "NEG.SSC.bam"
 assert os.path.exists(input_neg_bam)
 
 
-# Output path for the total summarized data
-total_output = "summary.json.gz"
+# Output path for the total and summarized data
+total_output = "total.json.gz"
 print(f"Output path: {total_output}")
+summary_output = "summary.json.gz"
+print(f"Output path: {summary_output}")
 
 # Output path for the data grouped by contig
 chr_output = "by_chr.csv.gz"
@@ -452,12 +454,16 @@ neg_ssc = parse_bam(input_neg_bam)
 # Join all of the information from both strands
 ssc_dat, base_positions = merge_strands(pos_ssc, neg_ssc)
 
-# Format all of the output, both by contig and overall
-total, by_chr, snp_base_changes, adduct_base_changes = format_output(ssc_dat)
-
 # Save the total information to JSON
 with gzip.open(total_output, "wt") as handle:
-    json.dump(total, handle)
+    json.dump(ssc_dat, handle)
+
+# Format all of the output, both by contig and overall
+summary_dat, by_chr, snp_base_changes, adduct_base_changes = format_output(ssc_dat)
+
+# Save the summary information to JSON
+with gzip.open(summary_output, "wt") as handle:
+    json.dump(summary_dat, handle)
 
 # Save the by-chr information to CSV
 by_chr.to_csv(chr_output)
