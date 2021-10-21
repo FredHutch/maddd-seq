@@ -35,6 +35,23 @@ process bwa {
 
 }
 
+// Filter all alignments to those which overlap a target region
+process filter_target_regions {
+    container "${params.container__bwa}"
+    tag "cpu_limited"
+    
+    input:
+    tuple val(specimen), val(shard_ix), path("unmasked.bam")
+    path target_regions_bed
+
+    output:
+    tuple val(specimen), val(shard_ix), path("aligned.bam"), emit: bam
+
+    script:
+    template 'filter_target_regions.sh'
+
+}
+
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
@@ -106,6 +123,23 @@ workflow align_wf{
 
     // Align all of the reads
     bwa(shard_ch, ref)
+
+    // If the user specified a --target_regions_bed
+    if ( params.target_regions_bed ){
+
+        // Get that file
+        target_regions_bed = file(params.target_regions_bed)
+
+        // Only keep alignments which overlap this region
+        filter_target_regions(
+            bwa.out.bam,
+            target_regions_bed
+        )
+
+        bam_ch = filter_target_regions.out.bam
+    } else{
+        bam_ch = bwa.out.bam
+    }
 
     // Count up the number of aligned reads to each contig per shard
     flagstats(bwa.out.bam)

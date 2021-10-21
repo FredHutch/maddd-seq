@@ -37,6 +37,9 @@ params.min_reads_per_ssc = 3
 // Maximum distance that an SSC may change position after realignment
 params.max_realign_offset = 5
 
+// If specified, mask everything outside of a user-provided target region (BED file)
+params.target_regions_bed = false
+
 
 // Set the containers to use for each component
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
