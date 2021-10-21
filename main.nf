@@ -30,12 +30,13 @@ params.n_shards = 100
 // Minimum proportion of bases needed to call an SSC base
 params.min_base_prop = 0.7
 
-params.repeat_masker = false
-params.bed = false
-params.max_family_offset = 5
-params.min_reads_per_ssc = 3
 // Maximum distance that an SSC may change position after realignment
 params.max_realign_offset = 5
+
+// Minimum number of reads needed for EACH SSC to keep a DSC
+// Note that we will keep a DSC from either end of a molecule,
+// even if the other end doesn't have enough data to use
+params.min_reads = 3
 
 // If specified, mask everything outside of a user-provided target region (BED file)
 params.target_regions_bed = false
@@ -48,6 +49,7 @@ params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
 params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:0fd1e29"
 params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
 params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:latest"
+params.container__bcftools = "quay.io/biocontainers/bcftools:1.13--h3a49de5_0"
 
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
@@ -89,6 +91,12 @@ Optional Arguments:
                         ligated barcode sequences are removed
   --n_shards            Number of parallel processes to use for creating families
                         (default: ${params.n_shards})
+  --min_base_prop       Minimum proportion of bases needed to call one base of a SSC
+                        (default: ${params.min_base_prop})
+  --min_reads           Minimum number of reads needed for EACH SSC to keep a DSC
+                        Note that we will keep a DSC from either end of a molecule,
+                        even if the other end doesn't have enough data to use.
+                        (default: ${params.min_reads})
   --max_realign_offset  Maximum distance that an SSC may change position after realignment
                         (default: ${params.max_realign_offset})
   --RD1_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
@@ -182,7 +190,7 @@ workflow {
     // Group reads into families based on barcodes and alignment position
     // This sub-workflow will also collapse and summarize SSCs and DSCs
     family_wf(
-        align_wf.out.bam.join(barcodes_wf.out.csv),
+        align_wf.out.bam,
         genome_ref
     )
     // input:
@@ -193,17 +201,19 @@ workflow {
     // publish:
     //   5_families/family_summary.csv
     //   5_families/<specimen>/aligned.bam[.bai]
-    //   6_SSC/<specimen>/SSC.bam[.bai]
-    //   6_SSC/<specimen>/SSC.details.csv.gz
-    //   7_DSC/<specimen>/DSC.bam[.bai]
-    //   7_DSC/<specimen>/DSC.details.csv.gz
-    //   7_DSC/<specimen>/DSC.positional.csv.gz
+    //   6_all_SSC/<specimen>/POS.SSC.bam[.bai]
+    //   6_all_SSC/<specimen>/NEG.SSC.bam[.bai]
+    //   6_all_SSC/<specimen>/SSC.details.csv.gz
 
     // Call variants and adducts
     variants_wf(
-        family_wf.out.bam
+        family_wf.out.bam,
+        genome_ref
     )
     // publish:
+    //   7_filtered_SSC/<specimen>/POS.SSC.bam[.bai]
+    //   7_filtered_SSC/<specimen>/NEG.SSC.bam[.bai]
+    //   7_filtered_SSC/<specimen>/SSC.details.csv.gz
     //   8_variants/<specimen>/variants.vcf
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
