@@ -116,7 +116,7 @@ workflow align_wf{
     // tuple val(specimen), path("shard.*.R1.fastq.gz"), path("shard.*.R2.fastq.gz")
 
     // The output of shard() needs to be transformed to
-    // tuple val(specimen), val(shard_ix), path(bam)
+    // tuple val(specimen), val(shard_ix), path(R1), path(R2)
     shard_ch = shard.out.transpose().map {
         [it[0], it[1].name.replaceAll('.R1.fastq.gz', ''), it[1], it[2]]
     }
