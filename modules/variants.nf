@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 // Filter SSCs based on the depth of sequencing
 process filter_ssc_depth {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true, pattern: "*.bam"
     
     input:
     tuple val(specimen), path("unfiltered.POS.SSC.bam"), path("unfiltered.NEG.SSC.bam"), path("unfiltered.SSC.details.csv.gz")
@@ -23,18 +23,15 @@ process filter_ssc_depth {
 // Parse the SSC data
 process parse_ssc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
 
     output:
     tuple val(specimen), path("total.json.gz"), emit: json
-    file "summary.json.gz"
-    file "by_chr.csv.gz"
-    file "snps_by_base.csv.gz"
-    file "adducts_by_base.csv.gz"
-    file "by_read_position.csv.gz"
+    path "summary.json.gz"
+    path "*.csv.gz", emit: csv
 
     script:
     template 'parse_ssc.py'
@@ -44,7 +41,7 @@ process parse_ssc {
 // Format the DSC data as BAM
 process format_dsc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
@@ -60,7 +57,7 @@ process format_dsc {
 // Format the output as VCF
 process format_vcf {
     container "${params.container__bcftools}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     
     input:
     tuple val(specimen), path("DSC.bam")
@@ -71,6 +68,38 @@ process format_vcf {
 
     script:
     template 'format_vcf.sh'
+
+}
+
+// Format details about all SSCs as CSV
+process format_ssc_csv {
+    container "${params.container__pandas}"
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    
+    input:
+    tuple val(specimen), path("total.json.gz"), path("SSC.details.csv.gz")
+
+    output:
+    file "${specimen}.SSC.csv.gz"
+
+    script:
+    template 'format_ssc_csv.py'
+
+}
+
+// Make plots
+process make_plots {
+    container "${params.container__python_plotting}"
+    publishDir "${params.output}/7_filtered_SSC/plots/", mode: 'copy', overwrite: true
+    
+    input:
+    path "*"
+
+    output:
+    file "*.pdf"
+
+    script:
+    template 'make_plots.py'
 
 }
 
@@ -112,7 +141,33 @@ workflow variants_wf{
         genome_ref
     )
 
-    // emit:
-    // adduct_summary = call_adducts
+    // Format details about all SSCs as CSV
+    format_ssc_csv(
+        // Format the input to this as the JSON with mutations per 
+        // family, as well as the number of reads per SSC
+        parse_ssc
+            .out
+            .json
+            .join(
+                filter_ssc_depth
+                    .out
+                    .map {
+                        [it[0], it[3]]
+                    }
+            )
+    )
+
+    // Make a series of plots across all specimens
+    make_plots(
+        format_ssc_csv
+            .out
+            .mix(
+                parse_ssc
+                    .out
+                    .csv
+                    .flatten()
+            )
+            .toSortedList()
+    )
 
 }

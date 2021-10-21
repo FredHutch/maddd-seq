@@ -30,19 +30,19 @@ summary_output = "summary.json.gz"
 print(f"Output path: {summary_output}")
 
 # Output path for the data grouped by contig
-chr_output = "by_chr.csv.gz"
+chr_output = "${specimen}.by_chr.csv.gz"
 print(f"Output path: {chr_output}")
 
 # Output path for SNP data grouped by base change
-snps_base_output = "snps_by_base.csv.gz"
+snps_base_output = "${specimen}.snps_by_base.csv.gz"
 print(f"Output path: {snps_base_output}")
 
 # Output path for adduct data grouped by base change
-adduct_base_output = "adducts_by_base.csv.gz"
+adduct_base_output = "${specimen}.adducts_by_base.csv.gz"
 print(f"Output path: {adduct_base_output}")
 
 # Output path for variant data organized by position in the reads
-base_positions_output = "by_read_position.csv.gz"
+base_positions_output = "${specimen}.by_read_position.csv.gz"
 print(f"Output path: {base_positions_output}")
 
 def parse_read(read):
@@ -466,14 +466,14 @@ with gzip.open(summary_output, "wt") as handle:
     json.dump(summary_dat, handle)
 
 # Save the by-chr information to CSV
-by_chr.to_csv(chr_output)
+by_chr.to_csv(chr_output, index_label='chr')
 
 # Save the SNP by-base information to CSV
-snp_base_changes.to_csv(snps_base_output)
+snp_base_changes.to_csv(snps_base_output, index_label='base')
 
 # Save the adduct by-base information to CSV
-adduct_base_changes.to_csv(adduct_base_output)
+adduct_base_changes.to_csv(adduct_base_output, index_label='base')
 
 # Format the data by read position as a DataFrame
 base_positions = pd.DataFrame(base_positions).fillna(0).applymap(int)
-base_positions.to_csv(base_positions_output)
+base_positions.to_csv(base_positions_output, index_label="pos")
