@@ -59,9 +59,16 @@ def plot_distribution(
     xlabel=None,
     ylabel=None,
 ):
-    # Make the plot
-    sns.displot(data=df, x=col_name, y=y, hue=hue, kind=kind)
-    annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
+
+    # Try to make the plot
+    try:
+        sns.displot(data=df, x=col_name, y=y, hue=hue, kind=kind)
+        annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
+
+    # If there is an index error, then the underlying data may not have
+    # had enough variation to plot the distribution
+    except IndexError:
+        print(f"Could not make plot: x='{col_name}', y='{y}', hue='{hue}', title='{title}'")
 
 
 def plot_lines(
@@ -231,6 +238,8 @@ def plot_read_position():
 
 
 def plot_heatmap(suffix=None, pdf_fp=None):
+
+    print("Plotting files with the suffix: " + suffix)
     
     # Read the tables
     df = read_files(suffix, melt=True)
@@ -246,7 +255,18 @@ def plot_heatmap(suffix=None, pdf_fp=None):
         index='base_change',
         values="value"
     )
+
+    # Remove any rows which lack observations
     df = df.loc[df.sum(axis=1) > 0]
+
+    # If there is no data to plot
+    if df.shape[0] == 0:
+
+        # Don't make the plot
+        print(f"No data found for plotting")
+        return
+
+    # Otherwise, if there is data to plot
 
     # Open the output
     with PdfPages(pdf_fp) as pdf:
