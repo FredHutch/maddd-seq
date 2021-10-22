@@ -32,7 +32,7 @@ process repeatmasker {
 
     output:
     // Output all files which were created with this command
-    path "*"
+    path "${genome_fasta}.masked"
 
     script:
     template 'repeatmasker.sh'
