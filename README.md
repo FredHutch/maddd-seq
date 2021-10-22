@@ -1,18 +1,19 @@
-# WGS Duplex Seq
-Analysis of whole-genome shotgun duplex sequencing data
+# Mutation and DNA Damage Detection by massively-parallel sequencing (MADDD-seq)
 
 ## Background
 
 When analyzing the variants present in a collection of nucleic acids, one option is
-to perform "duplex sequencing" in which both strands of the DNA duplex are sequenced
+to perform "MADDD-seq" in which both strands of the DNA duplex are sequenced
 independently. This method for preparing nucleic acids for high-throughput sequencing
 relies on an approach in which unique barcodes are attached to both ends of each
 distinct piece of DNA. By grouping together sequence reads which share the same
 barcode combinations, the analysis can generate highly accurate measurements of the
-nucleotide sequence of each independent strand.
+nucleotide sequence of each independent strand. Using that strand-specific information,
+the presence of single-nucleotide polymorphisms (SNPs) and adducts is inferred for
+all of the DNA fragments which were analyzed.
 
-One of the primary determinents of the quality of this type of duplex sequencing
-analysis is the combination of filtering parameters which is applied to the raw
+One of the primary determinents of the quality of this type of sequencing
+analysis is the combination of filtering parameters which is applied to the raw sequence
 data. The elements of filtering which are most important are (a) the minimum number
 of reads required per DNA strand and (b) the number of bases which are trimmed from
 each end of the DNA molecule prior to variant calling. The underlying reason for the
@@ -35,72 +36,90 @@ The steps of this analysis workflow are:
 
 1. Perform quality trimming and QC of the input whole-genome shotgun sequence (WGS) data
 2. Trim barcodes from the ends of WGS reads and tag each pair with the concatenated barcode
-3. Trim an additional N bases from the beginning of each read to reduce errors introduced by blunt-end ligation
+3. Trim an additional N bases from the beginning of each read to reduce errors introduced by overhang filling
 4. Align the barcode-trimmed reads to the reference genome
 5. Group together sequences which share the same barcode and which are aligned to the same position into 'families'
 6. Infer the Single-Strand Consensus (SSC) from each family of input data
 7. Compare the SSC sequences from each strand to generate the double-strand consensus (DSC) sequence
-8. Trim the ends from each DSC and summarize the number and position of DNA variants and adducts detected
+8. Summarize the number and position of DNA variants and adducts detected
 
 The options available for this analysis are:
 
 - Quality threshold used for trimming in (1)
 - Length of the barcodes trimmed in (2)
+- List of barcode sequences used for error-correction in (2)
+- The maximum number of mismatches used for barcode error-correction in (2)
 - Additional number of bases to remove from the beginning of each read in (3)
 - Minimum threshold for alignment scores in (4)
-- Whether or not repetitive elements should be masked in (4)
 - A set of genomic regions used for target capture (used to limit the regions of analysis in 4)
-- The maximum number of mismatches used for grouping molecular barcodes in (5)
 - The maximum distance between the alignment start position of reads grouped together in (5)
 - Minimum number of reads per SSC used in analysis after (6)
-- Minimum number of DSCs required to call variants in (8)
+- An optional set of genomic coordinates to omit while detecting SNPs and adducts in (8)
 
 ## Outputs
 
 ```
-1_input_data/input.fastqc.html
+1_input_data/input/multiqc_report.html
 Summary of sequence quality for input data
 
-1_input_data/quality_trimmed.fastqc.html
+1_input_data/quality_trimmed/multiqc_report.html
 Summary of sequence quality after trimming by quality score
 
-2_barcode_trimmed/barcode_frequency.csv
-Summary of the number of reads from each specimen with each barcode
+2_barcode_trimmed/{specimen}/barcode_counts.csv.gz
+Summary of the number of reads from each specimen with each uncorrected barcode
+
+2_barcode_trimmed/{specimen}/barcode_corrections.csv.gz
+Summary of the number of reads from each specimen with each corrected barcode
 (after barcode error correction)
 
-3_end_trimmed/end_trimmed.fastqc.html
-Summary of sequence quality after trimming additional 5' bases
+2_barcode_trimmed/{specimen}/{specimen}.barcodes.pdf
+Figure displaying the distribution of the number of reads sequenced per barcode
 
-4_aligned/alignment_summary.csv
+2_barcode_trimmed/multiqc_report.html
+Summary of sequence quality after trimming barcodes
+
+3_end_trimmed/fastqc/multiqc_report.html
+Summary of sequence quality after trimming additional bases from the 5' end of each read
+
+4_aligned/multiqc_report.html
+Summary of the overall number of reads aligned per specimen
+
+4_aligned/{specimen}/{specimen}.flagstats
 Summary of the number of reads aligned per contig per specimen
 
-5_families/family_summary.csv
-Summary of the distribution of family sizes per specimen
+6_all_SSC/<specimen>/[NEG|POS].SSC.bam[.bai]
+Aligned SSCs (unfiltered by number of reads) per specimen, both positive and negative strands
 
-5_families/<specimen>/aligned.bam[.bai]
-Aligned reads, tagged by barcode and family
+6_all_SSC/<specimen>/SSC.details.csv.gz
+For each SSC (unfiltered by number of reads) in a specimen, details including the number of reads
 
-6_SSC/<specimen>/SSC.bam[.bai]
-Aligned SSCs per specimen
+7_filtered_SSC/<specimen>/alignments/DSC.bam[.bai]
+Aligned DSCs per specimen, after filtering by the minimum number of reads per SSC
 
-6_SSC/<specimen>/SSC.details.csv.gz
-For each SSC in a specimen, details including the number of reads and mismatches
+7_filtered_SSC/<specimen>/alignments/[POS|NEG].SSC.bam[.bai]
+Aligned SSCs per specimen, after filtering by the minimum number of reads per SSC
 
-7_DSC/<specimen>/DSC.bam[.bai]
-Aligned DSCs per specimen
+7_filtered_SSC/<specimen>/alignments/DSC.vcf.gz
+Tabular summary of variant positions detected per specimen
 
-7_DSC/<specimen>/DSC.details.csv.gz
-For each DSC in a specimen, details including the number of reads on each strand, mismatches, and adducts
+7_filtered_SSC/<specimen>/stats/{specimen}.snps_by_base.csv.gz
+Number of SNPs detected as a function of what bases were changed (e.g. A -> C)
 
-7_DSC/<specimen>/DSC.positional.csv.gz
-Over all DSCs in a specimen, the rate of variants and adducts as a function of read position
+7_filtered_SSC/<specimen>/stats/{specimen}.adducts_by_base.csv.gz
+Number of adducts detected as a function of what bases were changed (e.g. A -> C)
 
-8_variants/<specimen>/variants.vcf
-Position of variants detected per specimen
+7_filtered_SSC/<specimen>/stats/{specimen}.by_chr.csv.gz
+Number of SNPs and adducts detected per chromosome (contig)
 
-8_variants/<specimen>/adducts.vcf
-Position of adducts detected per specimen
+7_filtered_SSC/<specimen>/stats/{specimen}.by_read_position.csv.gz
+Number of SNPs and adducts detected as a function of the position along the read
 
-8_variants/variant_summary.csv
-Number and rate of variants and adducts per specimen
+7_filtered_SSC/<specimen>/stats/{specimen}.SSC.csv.gz
+Tabular summary of all filtered SSCs, including SNPs, adducts, and read length
+
+7_filtered_SSC/plots/DSC.summary.pdf
+Visual summary of various metrics summarizing the filtered DSCs
+
+7_filtered_SSC/plots/DSC.summary.pdf
+Visual summary of the distribution of SNPs and adducts as a function of position along the read
 ```
