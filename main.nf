@@ -6,6 +6,8 @@ nextflow.enable.dsl=2
 // Set default parameters
 params.help = false
 params.sample_sheet = false
+params.fastq_folder = false
+params.fastq_suffix = ".fastq.gz"
 params.output = false
 params.genome = false
 params.barcodes = false
@@ -71,8 +73,15 @@ Usage:
 
 nextflow run FredHutch/wgs-duplex-seq <ARGUMENTS>
 
-Required Arguments:
+Input Data:
   --sample_sheet        CSV file listing samples with headers: specimen, R1, and R2
+  -or-
+  --fastq_folder        Folder containing paired-end FASTQ data
+                        Note that all FASTQ files must contain either 'R1' or 'R2'
+                        in the filename, with the suffix noted by --fastq_suffix,
+                        described below.
+
+Required Arguments:
   --output              Folder to write output files to
   --genome              Reference genome indexed for alignment by BWA
   --barcodes            Path to text file containing the barcode whitelist
@@ -113,11 +122,13 @@ Optional Arguments:
                         Note that positional coordinates in this CSV should be 1-based,
                         as is the convention with genomic coordinates, rather than the
                         0-based coordinates used more commonly in programming languages.
+  --fastq_suffix        When input data is specified by --fastq_folder (instead of --sample_sheet),
+                        only files with this suffix will be used as inputs (default: ${params.fastq_suffix})
 
 
-Manifest:
-  The manifest is a CSV listing all of the duplex sequencing data to be analyzed.
-  The manifest must contain the column headers: specimen,R1,R2
+Sample Sheet:
+  The sample sheet is a CSV listing all of the duplex sequencing data to be analyzed.
+  The sample sheet must contain the column headers: specimen,R1,R2
   The R1 and R2 file paths may start with ftp://, s3://, or even just be a path to a local file.
   The specimen must be unique, and only contain a-z, A-Z, 0-9, or _.
     """.stripIndent()
@@ -128,25 +139,65 @@ Manifest:
 workflow {
 
     // Show help message if the user specifies the --help flag at runtime
-    // or if --sample_sheet and --output are not provided
-    if ( params.help || params.sample_sheet == false || params.output == false || params.genome == false ){
+    // or if --genome and --output are not provided
+    if ( params.help || params.output == false || params.genome == false ){
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
         exit 1
     }
 
-    // Parse the manifest
-    manifest_wf(
-        params.sample_sheet
-    )
-    // output:
-    //   reads:
-    //     tuple val(specimen), path(read_1), path(read_2)
+    // If neither --sample_sheet or --fastq_folder are provided
+    if ( !params.sample_sheet && !params.fastq_folder ){
+        log.info"""
+        ERROR: Must provide either --sample_sheet or --fastq_folder.
+        View help text with --help for more details.
+        """.stripIndent()
+        exit 1
+    }
+
+    // If both --sample_sheet and --fastq_folder are provided
+    if ( params.sample_sheet && params.fastq_folder ){
+        log.info"""
+        ERROR: Must provide either --sample_sheet or --fastq_folder, but not both.
+        View help text with --help for more details.
+        """.stripIndent()
+        exit 1
+    }
+
+    // If the user provided a sample sheet
+    if ( params.sample_sheet ){
+
+        // Parse the manifest (sample sheet)
+        manifest_wf(
+            params.sample_sheet
+        )
+        // output:
+        //   reads:
+        //     tuple val(specimen), path(read_1), path(read_2)
+
+        // Set fastq_ch with the output of that subworkflow
+        fastq_ch = manifest_wf.out.reads
+
+    // Otherwise, the user must have provided a FASTQ folder
+    } else {
+
+        // Set fastq_ch with the pairs of files from the FASTQ folder
+        // which end with the suffix, and which vary only by R1/R2
+        Channel
+            .fromFilePairs("${params.fastq_folder}/*R{1,2}*${params.fastq_suffix}")
+            .map{
+                [it[0], it[1][0], it[1][1]]
+            }
+            .set(fastq_ch)
+        // Cardinality: tuple val(specimen), path(read_1), path(read_2)
+
+    }
+
 
     // Perform quality trimming on the ends of all reads
     quality_wf(
-        manifest_wf.out.reads
+        fastq_ch
     )
     // output:
     //   reads:
