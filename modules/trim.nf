@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 // Perform quality trimming on the input FASTQ data
 process fixed_trim {
     container "${params.container__cutadapt}"
-    cpus 1
+    label "cpu_medium"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -24,7 +24,8 @@ process fixed_trim {
 process multiqc {
     container "${params.container__multiqc}"
     publishDir "${params.output}/3_end_trimmed/fastqc/", mode: 'copy', overwrite: true
-    
+    label "io_limited"
+
     input:
     path "*"
 
@@ -39,6 +40,7 @@ process multiqc {
 // Assess quality of reads after trimming a fixed length
 process fastqc {
     container "${params.container__fastqc}"
+    label "io_limited"
     
     input:
     tuple val(specimen), path(R1), path(R2)

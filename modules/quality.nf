@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Assess quality of input data
 process fastqc_input {
     container "${params.container__fastqc}"
+    label "io_limited"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -22,6 +23,7 @@ process fastqc_input {
 // Assess quality of trimmed data
 process fastqc_trimmed {
     container "${params.container__fastqc}"
+    label "io_limited"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -38,6 +40,7 @@ process fastqc_trimmed {
 // Perform quality trimming on the input FASTQ data
 process quality_trim {
     container "${params.container__cutadapt}"
+    label "cpu_medium"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -55,6 +58,7 @@ process quality_trim {
 process multiqc_input {
     container "${params.container__multiqc}"
     publishDir "${params.output}/1_input_data/input/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     path "*"
@@ -71,6 +75,7 @@ process multiqc_input {
 process multiqc_trimmed {
     container "${params.container__multiqc}"
     publishDir "${params.output}/1_input_data/quality_trimmed/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     path "*"

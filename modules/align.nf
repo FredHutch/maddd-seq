@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Break up the unaligned reads for each specimen into shards for processing
 process shard {
     container "${params.container__pandas}"
+    label "io_limited"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -21,7 +22,7 @@ process shard {
 // Align reads with BWA MEM
 process bwa {
     container "${params.container__bwa}"
-    tag "cpu_limited"
+    label "cpu_medium"
     
     input:
     tuple val(specimen), val(shard_ix), path(R1), path(R2)
@@ -38,7 +39,7 @@ process bwa {
 // Filter all alignments to those which overlap a target region
 process filter_target_regions {
     container "${params.container__bwa}"
-    tag "cpu_limited"
+    label "cpu_medium"
     
     input:
     tuple val(specimen), val(shard_ix), path("unmasked.bam")
@@ -55,6 +56,7 @@ process filter_target_regions {
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(shard_ix), path(bam)
@@ -71,6 +73,7 @@ process flagstats {
 process join_flagstats {
     container "${params.container__bwa}"
     publishDir "${params.output}/4_aligned/${specimen}/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     tuple val(specimen), path("*")  // "${shard_ix}.flagstats"
@@ -87,6 +90,7 @@ process join_flagstats {
 process multiqc_flagstats {
     container "${params.container__multiqc}"
     publishDir "${params.output}/4_aligned/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     path "*"

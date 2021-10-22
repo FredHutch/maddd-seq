@@ -7,6 +7,7 @@ nextflow.enable.dsl=2
 process filter_ssc_depth {
     container "${params.container__pandas}"
     publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true, pattern: "*.bam"
+    label "io_limited"
     
     input:
     tuple val(specimen), path("unfiltered.POS.SSC.bam"), path("unfiltered.NEG.SSC.bam"), path("unfiltered.SSC.details.csv.gz")
@@ -24,6 +25,7 @@ process filter_ssc_depth {
 process parse_ssc {
     container "${params.container__pandas}"
     publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
+    label "io_limited"
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
@@ -43,6 +45,7 @@ process parse_ssc {
 process format_dsc {
     container "${params.container__pandas}"
     publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
@@ -59,6 +62,7 @@ process format_dsc {
 process format_vcf {
     container "${params.container__bcftools}"
     publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     tuple val(specimen), path("DSC.bam")
@@ -76,6 +80,7 @@ process format_vcf {
 process format_ssc_csv {
     container "${params.container__pandas}"
     publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     tuple val(specimen), path("total.json.gz"), path("SSC.details.csv.gz")
@@ -92,6 +97,7 @@ process format_ssc_csv {
 process make_plots {
     container "${params.container__python_plotting}"
     publishDir "${params.output}/7_filtered_SSC/plots/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     path "*"

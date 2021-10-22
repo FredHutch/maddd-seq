@@ -7,6 +7,7 @@ nextflow.enable.dsl=2
 process clip_barcodes {
     container "${params.container__cutadapt}"
     publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
+    label "cpu_medium"
 
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -24,6 +25,7 @@ process clip_barcodes {
 // Assess quality of reads after removing barcodes
 process fastqc {
     container "${params.container__fastqc}"
+    label "io_limited"
     
     input:
     tuple val(specimen), path(R1), path(R2)
@@ -41,6 +43,7 @@ process fastqc {
 process multiqc {
     container "${params.container__multiqc}"
     publishDir "${params.output}/2_barcode_trimmed/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     path "*"
@@ -57,7 +60,7 @@ process multiqc {
 process correct_barcode_errors {
     container "${params.container__pandas}"
     publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, glob: "barcode_corrections.csv.gz"
-    label "highmem"
+    label "mem_medium"
 
     input:
     tuple val(specimen), path("barcode_counts.csv.gz")
@@ -75,6 +78,7 @@ process correct_barcode_errors {
 process plot_barcodes {
     container "${params.container__python_plotting}"
     publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true
+    label "io_limited"
 
     input:
     tuple val(specimen), path("barcode_counts.csv.gz"), path("barcode_corrections.csv.gz")
@@ -90,6 +94,7 @@ process plot_barcodes {
 // Apply the corrected barcode sequences to the FASTQ data
 process update_barcodes {
     container "${params.container__pandas}"
+    label "io_limited"
 
     input:
     tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")

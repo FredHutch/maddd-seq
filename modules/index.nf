@@ -7,7 +7,8 @@ nextflow.enable.dsl=2
 // Index a genome with BWA MEM
 process bwa_index {
     container "${params.container__bwa}"
-    tag "cpu_limited"
+    label "io_limited"
+    publishDir "${params.output}/", mode: 'copy', overwrite: true
     
     input:
     path genome_fasta
@@ -24,7 +25,7 @@ process bwa_index {
 // Run RepeatMasker on a genome FASTA
 process repeatmasker {
     container "${params.container__repeatmasker}"
-    tag "cpu_limited"
+    label "cpu_medium"
     
     input:
     path genome_fasta

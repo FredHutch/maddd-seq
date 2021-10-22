@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
 process extract_positions {
     container "${params.container__pandas}"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(shard_ix), path(bam)
@@ -23,6 +24,7 @@ process extract_positions {
 // will be encoded in the attached CSV by this step
 process assign_families {
     container "${params.container__pandas}"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(shard_ix), path("read_positions.csv.gz")
@@ -38,6 +40,7 @@ process assign_families {
 // Compute the SSC sequences at the FASTQ level
 process make_ssc {
     container "${params.container__pandas}"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(shard_ix), path("families.csv.gz"), path(bam)
@@ -53,6 +56,7 @@ process make_ssc {
 // Re-align the SSC sequences against the reference
 process align_ssc {
     container "${params.container__bwa}"
+    label "cpu_medium"
     
     input:
     tuple val(specimen), path("SSC_FWD_R1/*"), path("SSC_FWD_R2/*"), path("SSC_REV_R1/*"), path("SSC_REV_R2/*")
@@ -71,6 +75,7 @@ process align_ssc {
 process filter_ssc_position {
     container "${params.container__pandas}"
     publishDir "${params.output}/6_all_SSC/${specimen}/", mode: 'copy', overwrite: true
+    label "io_limited"
     
     input:
     tuple val(specimen), path("realigned.POS.SSC.bam"), path("realigned.NEG.SSC.bam"), path("SSC_STATS/*.csv.gz")

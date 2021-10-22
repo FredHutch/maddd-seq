@@ -19,6 +19,7 @@ cutadapt \
     -p "${R2.name.replaceAll(/.fastq.gz/, '')}.clipped.fastq.gz" \
     --json="${specimen}.cutadapt.json" \
     --rename='{id} BC:Z:{r1.cut_prefix}{r2.cut_prefix}' \
+    --cores ${task.cpus} \
     "$R1" \
     "$R2"
 

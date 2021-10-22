@@ -17,6 +17,7 @@ cutadapt \
     -o "${R1.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
     -p "${R2.name.replaceAll(/.fastq.gz/, '')}.trimmed.fastq.gz" \
     --json="${specimen}.cutadapt.json" \
+    --cores=${task.cpus} \
     "$R1" \
     "$R2"
 
