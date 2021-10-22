@@ -8,8 +8,6 @@ A barcode will be assigned to a 'corrected' sequence if:
 - The 'corrected' sequence is no more than ${params.max_barcode_mismatch} bases different
 """
 
-from collections import defaultdict
-from bitarray import bitarray
 from functools import lru_cache
 import logging
 import os

@@ -41,6 +41,9 @@ params.min_reads = 3
 // If specified, mask everything outside of a user-provided target region (BED file)
 params.target_regions_bed = false
 
+// If specified, a CSV file containing the set of coordinates which
+// should be ignored during mutation/variant calling
+params.ignore_coordinates = false
 
 // Set the containers to use for each component
 params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
@@ -103,6 +106,13 @@ Optional Arguments:
                         of the R1 (default: ${params.RD1_ADAPTER_3P})
   --RD2_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
                         of the R2 (default: ${params.RD2_ADAPTER_3P})
+  --target_regions_bed  Optional BED file describing a set of target genomic regions
+                        to use for analysis, e.g. exome target capture.
+  --ignore_coordinates  Optional CSV listing locations which should be ignored from
+                        SNP/adduct calling, with columns 'chr' and 'pos'.
+                        Note that positional coordinates in this CSV should be 1-based,
+                        as is the convention with genomic coordinates, rather than the
+                        0-based coordinates used more commonly in programming languages.
 
 
 Manifest:
@@ -217,8 +227,5 @@ workflow {
     //   8_variants/<specimen>/variants.vcf
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
-    //   2_barcode_trimmed/multiqc_report.html
-    //   3_end_trimmed/fastqc/multiqc_report.html
-    //   3_end_trimmed/cutadapt/multiqc_report.html
 
 }

@@ -22,6 +22,17 @@ assert os.path.exists(input_pos_bam)
 input_neg_bam = "NEG.SSC.bam"
 assert os.path.exists(input_neg_bam)
 
+# Input filepath for a CSV with a list of coordinates to ignore
+ignore_coordinates_fp = "ignore_coordinates.csv"
+assert os.path.exists(ignore_coordinates_fp)
+print(f"Reading from {ignore_coordinates_fp}")
+ignore_coordinates = pd.read_csv(ignore_coordinates_fp)
+print(f"Read in a set of {ignore_coordinates.shape[0]:,} coordinates to ignore")
+# Make sure that the expected columns are present
+assert 'chr' in ignore_coordinates.columns.values
+assert 'pos' in ignore_coordinates.columns.values
+# Transform the DataFrame to a set of tuples
+ignore_coordinates = set([(str(r.chr), int(r.pos)) for _, r in ignore_coordinates.iterrows()])
 
 # Output path for the total and summarized data
 total_output = "total.json.gz"
@@ -75,10 +86,13 @@ def parse_read(read):
     return family_id, orient, read_details
 
 
-def parse_variants(read):
+def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
     """
     For any position in which the read differs from the reference,
     include the reference position and the variant base in a dict.
+    Skip any position which does not contain one of the `allowed_nucs`.
+    By omitting any lowercase positions, we preserve the soft masking
+    filter used by RepeatMasker and other genome curation utilities.
     """
 
     # Encode the output as two dicts, one for variants and one for references
@@ -101,8 +115,20 @@ def parse_variants(read):
         qbase = read.query_sequence[qpos]
         rbase = rseq[rpos - read.reference_start]
 
+        # If the reference base has been masked
+        if rbase not in allowed_nucs:
+
+            # Skip it
+            continue
+
         # If the query matches the reference
         if qbase == rbase:
+
+            # Skip it
+            continue
+
+        # If this position is in the ignore list
+        if position_is_ignored(read.reference_name, rpos):
 
             # Skip it
             continue
@@ -116,6 +142,16 @@ def parse_variants(read):
         variants=variants,
         references=references
     )
+
+
+def position_is_ignored(chr, pos):
+    """
+    Return True if the specified (0-indexed) position should be ignored,
+    by comparing against the list of coordinates provided by the user
+    with --ignore_coordinates_csv (which is 1-indexed).
+    """
+
+    return (str(chr), int(pos + 1)) in ignore_coordinates
 
 
 def parse_bam(bam_fp):
