@@ -14,7 +14,7 @@ params.skip_repeatmasker = false
 params.repeatmasker_species = 'human'
 
 // Set the containers to use for each component
-params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:latest"
+params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:93deeda"
 params.container__repeatmasker = "quay.io/biocontainers/repeatmasker:4.1.2-p1"
 
 // Import sub-workflows

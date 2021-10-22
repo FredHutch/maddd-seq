@@ -53,7 +53,7 @@ params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
 params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
 params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:0fd1e29"
 params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
-params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:latest"
+params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:93deeda"
 params.container__bcftools = "quay.io/biocontainers/bcftools:1.13--h3a49de5_0"
 
 // Import sub-workflows
