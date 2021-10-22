@@ -25,6 +25,7 @@ process bwa_index {
 // Run RepeatMasker on a genome FASTA
 process repeatmasker {
     container "${params.container__repeatmasker}"
+    publishDir "${params.output}/", mode: 'copy', overwrite: true
     label "cpu_medium"
     
     input:
