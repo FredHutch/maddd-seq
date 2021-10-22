@@ -184,12 +184,11 @@ workflow {
 
         // Set fastq_ch with the pairs of files from the FASTQ folder
         // which end with the suffix, and which vary only by R1/R2
-        Channel
+        fastq_ch = Channel
             .fromFilePairs("${params.fastq_folder}/*R{1,2}*${params.fastq_suffix}")
             .map{
                 [it[0], it[1][0], it[1][1]]
             }
-            .set(fastq_ch)
         // Cardinality: tuple val(specimen), path(read_1), path(read_2)
 
     }
