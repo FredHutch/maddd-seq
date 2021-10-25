@@ -4,6 +4,7 @@ Filter out any re-aligned sequences whose anchor (outermost) coordinates
 have changed after the realignment of SSCs
 """
 
+from collections import defaultdict
 import os
 import pandas as pd
 import pysam
@@ -77,7 +78,10 @@ def find_consistent_families(bam_fp):
     """Return the set of families whose positions have stayed consistent after re-mapping."""
 
     # Populate a set of read names to keep
-    to_keep = set()
+    to_keep = defaultdict(set)
+
+    # Populate a set of read names which are found multiple times
+    multiples = set()
 
     # Initialize the counter
     i = 0
@@ -103,33 +107,59 @@ def find_consistent_families(bam_fp):
                     # If the end of the alignment matches the expectation
                     if abs(read.reference_end - int(rev_pos)) <= max_realign_offset:
 
-                        # Add it to the set to keep
-                        to_keep.add(read.query_name)
+                        # If it is already in the set to keep
+                        if read.query_name in to_keep['rev']:
+
+                            # Mark it as one of the duplicated reads
+                            multiples.add(read.query_name)
+
+                        # Otherwise
+                        else:
+
+                            # Add it to the set to keep
+                            to_keep['rev'].add(read.query_name)
 
                     else:
+                        print('Inconsistent:')
                         print(read.query_name)
                         print('rev' if read.is_reverse else 'fwd')
-                        print(read.reference_start)
                         print(read.reference_end)
 
                 # If the read is in the forward direction
                 else:
 
                     # If the start of the alignment matches the expectation
-                    if abs(read.reference_start - int(rev_pos)) <= max_realign_offset:
+                    if abs(read.reference_start - int(fwd_pos)) <= max_realign_offset:
 
-                        # Add it to the set to keep
-                        to_keep.add(read.query_name)
+                        # If it is already in the set to keep
+                        if read.query_name in to_keep['fwd']:
+
+                            # Mark it as one of the duplicated reads
+                            multiples.add(read.query_name)
+
+                        # Otherwise
+                        else:
+
+                            # Add it to the set to keep
+                            to_keep['fwd'].add(read.query_name)
 
                     else:
+                        print('Inconsistent:')
                         print(read.query_name)
                         print('rev' if read.is_reverse else 'fwd')
                         print(read.reference_start)
-                        print(read.reference_end)
 
     assert i > 0, "No reads found in input"
 
-    print(f"Keeping {len(to_keep):,} / {i+1:,} reads from {bam_fp}")
+    # Keep the reads which are aligned in the appropriate position
+    # for both the forward and reverse reads
+    print(f"Found {len(to_keep['fwd']):,} forward reads to keep")
+    print(f"Found {len(to_keep['rev']):,} reverse reads to keep")
+    to_keep = to_keep['fwd'] & to_keep['rev']
+    print(f"Omitting {len(to_keep):,} reads which were aligned multiple times")
+    to_keep = to_keep - multiples
+
+    print(f"Keeping {len(to_keep):,} read pairs from {bam_fp}")
     return to_keep
 
 
