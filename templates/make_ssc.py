@@ -79,7 +79,7 @@ def parse_input_bam(bam, families):
             ][
                 label
             ].append(
-                (read.query_sequence, read.query_qualities)
+                (read.query_alignment_sequence, read.query_alignment_qualities)
             )
             counter += 1
 
