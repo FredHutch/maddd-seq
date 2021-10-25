@@ -7,6 +7,7 @@ have changed after the realignment of SSCs
 import os
 import pandas as pd
 import pysam
+import shutil
 
 # Minimum number of reads per SSC
 min_reads = int("${params.min_reads}")
@@ -97,6 +98,18 @@ def filter_bam(input_bam, output_bam, keep_reads):
     assert len(keep_reads) == rev_counter
 
 
+def sort_bam(bam_fp):
+    """Sort a BAM file."""
+
+    # Sort the file, write out to "{bam_fp}.sorted.bam"
+    print(f"Sorting {bam_fp}")
+    pysam.sort('-@ ${task.cpus}', '-n', '-o', f"{bam_fp}.sorted.bam", bam_fp)
+
+    # Replace the original file with the sorted temp file
+    print(f"Cleaning up temporary file ({bam_fp}.sorted.bam)")
+    shutil.move(f"{bam_fp}.sorted.bam", bam_fp)
+
+
 # Filter the SSCs based on the minimum number of reads on both strands
 keep_reads = filter_sscs(ssc_stats, min_reads)
 
@@ -111,6 +124,10 @@ else:
     # Filter the BAM files for both strands
     filter_bam(input_pos_bam, output_pos_bam, keep_reads)
     filter_bam(input_neg_bam, output_neg_bam, keep_reads)
+
+    # Sort both files by query name
+    sort_bam(output_pos_bam)
+    sort_bam(output_neg_bam)
 
     # Filter the CSV
     ssc_stats = ssc_stats.loc[
