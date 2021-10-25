@@ -83,6 +83,9 @@ def find_consistent_families(bam_fp):
     # Populate a set of read names which are found multiple times
     multiples = set()
 
+    # Keep a set of all of the index positions which have inconsistent positions
+    inconsistent_ix = set()
+
     # Initialize the counter
     i = 0
     
@@ -91,9 +94,6 @@ def find_consistent_families(bam_fp):
 
         # Iterate over each read
         for read in bam:
-
-            # Increment the counter
-            i += 1
 
             # Parse the barcode, chromosome, and position from the read header
             _, cname, fwd_pos, rev_pos = read.query_name.split("-")
@@ -120,10 +120,9 @@ def find_consistent_families(bam_fp):
                             to_keep['rev'].add(read.query_name)
 
                     else:
-                        print('Inconsistent:')
-                        print(read.query_name)
-                        print('rev' if read.is_reverse else 'fwd')
-                        print(read.reference_end)
+                        
+                        # Keep a record that this index is inconsistent
+                        inconsistent_ix.add(i)
 
                 # If the read is in the forward direction
                 else:
@@ -144,10 +143,12 @@ def find_consistent_families(bam_fp):
                             to_keep['fwd'].add(read.query_name)
 
                     else:
-                        print('Inconsistent:')
-                        print(read.query_name)
-                        print('rev' if read.is_reverse else 'fwd')
-                        print(read.reference_start)
+
+                        # Keep a record that this index is inconsistent
+                        inconsistent_ix.add(i)
+
+            # Increment the counter
+            i += 1
 
     assert i > 0, "No reads found in input"
 
@@ -156,17 +157,21 @@ def find_consistent_families(bam_fp):
     print(f"Found {len(to_keep['fwd']):,} forward reads to keep")
     print(f"Found {len(to_keep['rev']):,} reverse reads to keep")
     to_keep = to_keep['fwd'] & to_keep['rev']
-    print(f"Omitting {len(to_keep):,} reads which were aligned multiple times")
+    print(f"Omitting {len(multiples):,} reads which were aligned multiple times")
     to_keep = to_keep - multiples
 
     print(f"Keeping {len(to_keep):,} read pairs from {bam_fp}")
-    return to_keep
+    print(f"Omitting {len(inconsistent_ix):,} alignments with inconsistent positions")
+    return to_keep, inconsistent_ix
 
 
-def filter_bam(keep_reads, input_bam, output_bam):
+def filter_bam(keep_reads, input_bam, output_bam, inconsistent_ix):
     """Filter the input BAM to a set of reads."""
 
     print(f"Preparing to write {len(keep_reads):,} read pairs from {input_bam} to {output_bam}")
+
+    # Start a counter
+    i = 0
 
     # Open the input BAM file for reading
     with pysam.AlignmentFile(input_bam, "rb") as bam_i:
@@ -181,7 +186,8 @@ def filter_bam(keep_reads, input_bam, output_bam):
             for read in bam_i:
 
                 # If the read is part of the set
-                if read.query_name in keep_reads:
+                # and this position has not been masked due to inconsistent position
+                if read.query_name in keep_reads and i not in inconsistent_ix:
 
                     # Write it out
                     bam_o.write(read)
@@ -198,6 +204,9 @@ def filter_bam(keep_reads, input_bam, output_bam):
                         # Increment the forward counter
                         fwd_counter += 1
 
+                # Increment the counter
+                i += 1
+
     print(f"Wrote {fwd_counter:,} forward reads from {input_bam} to {output_bam}")
     assert len(keep_reads) == fwd_counter
     print(f"Wrote {rev_counter:,} reverse reads from {input_bam} to {output_bam}")
@@ -210,16 +219,16 @@ ssc_stats = combine_ssc_stats()
 
 # Get the set of families whose coordinates have stayed the same
 # for each strand independently
-keep_families_pos = find_consistent_families(input_pos_bam)
-keep_families_neg = find_consistent_families(input_neg_bam)
+keep_families_pos, inconsistent_pos = find_consistent_families(input_pos_bam)
+keep_families_neg, inconsistent_neg = find_consistent_families(input_neg_bam)
 
 # Find the intersection, families which are consistent on both strands
 keep_families = keep_families_pos & keep_families_neg
 print(f"Keeping {len(keep_families):,} reads from both strands")
 
 # Filter the final outputs to just that set of families
-filter_bam(keep_families, input_pos_bam, "POS.SSC.bam")
-filter_bam(keep_families, input_neg_bam, "NEG.SSC.bam")
+filter_bam(keep_families, input_pos_bam, "POS.SSC.bam", inconsistent_pos)
+filter_bam(keep_families, input_neg_bam, "NEG.SSC.bam", inconsistent_neg)
 
 # Filter the SSC statistics and write out in CSV format
 ssc_stats = ssc_stats.loc[
