@@ -113,7 +113,7 @@ def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
 
         # Get the aligned and reference bases
         qbase = read.query_sequence[qpos]
-        rbase = rseq[rpos - read.reference_start]
+        rbase = rseq[rpos - read.reference_start].upper()
 
         # If the reference base has been masked
         if rbase not in allowed_nucs:
