@@ -80,9 +80,10 @@ def plot_lines(
     title=None,
     xlabel=None,
     ylabel=None,
+    alpha=0.5,
 ):
     # Make the plot
-    sns.lineplot(data=df, x=x, y=y, hue=hue)
+    sns.lineplot(data=df, x=x, y=y, hue=hue, alpha=alpha)
     plt.legend(bbox_to_anchor=[1.1, 0.9])
     annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
 
@@ -271,11 +272,21 @@ def plot_heatmap(suffix=None, pdf_fp=None):
     # Open the output
     with PdfPages(pdf_fp) as pdf:
 
+        # Make a plot with the number of counts per change
         sns.heatmap(df, cmap="Blues")
         plt.yticks(rotation=0)
         plt.ylabel("Base Change")
         plt.xlabel("")
         pdf.savefig(bbox_inches="tight")
+        plt.close()
+
+        # Make a plot with the proportion of counts per change
+        sns.heatmap(df / df.sum().clip(lower=1), cmap="Blues")
+        plt.yticks(rotation=0)
+        plt.ylabel("Base Change")
+        plt.xlabel("")
+        pdf.savefig(bbox_inches="tight")
+        plt.close()
 
 # Summary of mutations by base -> base
 # {specimen}.snps_by_base.csv.gz
