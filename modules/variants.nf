@@ -6,7 +6,6 @@ nextflow.enable.dsl=2
 // Filter SSCs based on the depth of sequencing
 process filter_ssc_depth {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true, pattern: "*.bam"
     label "io_limited"
     
     input:
@@ -17,6 +16,23 @@ process filter_ssc_depth {
 
     script:
     template 'filter_ssc_depth.py'
+
+}
+
+// Sort and index SSC BAM files
+process index_ssc {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true, pattern: "*.bam"
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), val(output_filename), path("unfiltered.bam")
+
+    output:
+    tuple val(specimen), path("${output_filename}"), path("${output_filename}.bai")
+
+    script:
+    template 'index_ssc.sh'
 
 }
 
@@ -142,6 +158,22 @@ workflow variants_wf{
     )
     // output:
     // tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
+
+    // To publish the SSC bam files for output, they must be sorted and indexed
+    // Note in this case that the files which are published do not have the exact order
+    // as the files which are used to format the DSC data, below. This should not impact
+    // the results, but it may be important for troubleshooting purposes
+    // NOTE: the index_ssc process will be executed on both the POS and NEG SSC data independently
+    index_ssc(
+        filter_ssc_depth
+            .out
+            .map {[it[0], "POS.SSC.bam", it[1]]}
+            .mix(
+            filter_ssc_depth
+                .out
+                .map {[it[0], "NEG.SSC.bam", it[2]]}
+            )
+    )
 
     // If the user specified a file with --ignore_coordinates
     if ( params.ignore_coordinates ) {
