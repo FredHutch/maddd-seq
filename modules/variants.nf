@@ -22,7 +22,7 @@ process filter_ssc_depth {
 // Sort and index SSC BAM files
 process index_ssc {
     container "${params.container__bwa}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true, pattern: "*.bam"
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
