@@ -44,7 +44,6 @@ process parse_ssc {
 // Format the DSC data as BAM
 process format_dsc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
@@ -55,6 +54,24 @@ process format_dsc {
 
     script:
     template 'format_dsc.py'
+
+}
+
+// Sort and index the BAM file for each DSC
+process index_dsc {
+    container "${params.container__bwa }"
+    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), path("unsorted.DSC.bam")
+
+    output:
+    tuple val(specimen), path("DSC.bam")
+    path "DSC.bam.bai"
+
+    script:
+    template 'index_dsc.sh'
 
 }
 
@@ -158,9 +175,14 @@ workflow variants_wf{
         filter_ssc_depth.out
     )
 
+    // Sort the DSC BAM file
+    index_dsc(
+        format_dsc.out
+    )
+
     // Format the output as VCF
     format_vcf(
-        format_dsc.out,
+        index_dsc.out[0],
         genome_ref
     )
 
