@@ -74,7 +74,7 @@ process align_ssc {
 // have changed after the realignment of SSCs
 process filter_ssc_position {
     container "${params.container__pandas}"
-    publishDir "${params.output}/6_all_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true
     label "mem_medium"
     
     input:

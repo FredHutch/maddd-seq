@@ -22,7 +22,7 @@ process filter_ssc_depth {
 // Sort and index SSC BAM files
 process index_ssc {
     container "${params.container__bwa}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
@@ -40,7 +40,7 @@ process index_ssc {
 // Parse the SSC data
 process parse_ssc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
     label "io_limited"
     
     input:
@@ -76,7 +76,7 @@ process format_dsc {
 // Sort and index the BAM file for each DSC
 process index_dsc {
     container "${params.container__bwa }"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
@@ -94,7 +94,7 @@ process index_dsc {
 // Format the output as VCF
 process format_vcf {
     container "${params.container__bcftools}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
@@ -112,7 +112,7 @@ process format_vcf {
 // Format details about all SSCs as CSV
 process format_ssc_csv {
     container "${params.container__pandas}"
-    publishDir "${params.output}/7_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
@@ -129,8 +129,8 @@ process format_ssc_csv {
 // Make plots
 process make_plots {
     container "${params.container__python_plotting}"
-    publishDir "${params.output}/7_filtered_SSC/plots/", mode: 'copy', overwrite: true, pattern: "*.pdf"
-    publishDir "${params.output}/7_filtered_SSC/tables/", mode: 'copy', overwrite: true, pattern: "*.csv"
+    publishDir "${params.output}/6_filtered_SSC/plots/", mode: 'copy', overwrite: true, pattern: "*.pdf"
+    publishDir "${params.output}/6_filtered_SSC/tables/", mode: 'copy', overwrite: true, pattern: "*.csv"
     label "io_limited"
     
     input:

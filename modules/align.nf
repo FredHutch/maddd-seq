@@ -72,7 +72,6 @@ process flagstats {
 // Join flagstats across shards per specimen
 process join_flagstats {
     container "${params.container__bwa}"
-    publishDir "${params.output}/4_aligned/${specimen}/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
