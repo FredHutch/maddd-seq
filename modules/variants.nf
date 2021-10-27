@@ -129,14 +129,15 @@ process format_ssc_csv {
 // Make plots
 process make_plots {
     container "${params.container__python_plotting}"
-    publishDir "${params.output}/7_filtered_SSC/plots/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/7_filtered_SSC/plots/", mode: 'copy', overwrite: true, pattern: "*.pdf"
+    publishDir "${params.output}/7_filtered_SSC/tables/", mode: 'copy', overwrite: true, pattern: "*.csv"
     label "io_limited"
     
     input:
     path "*"
 
-    output:
-    file "*.pdf"
+    output: 
+    file "*"
 
     script:
     template 'make_plots.py'

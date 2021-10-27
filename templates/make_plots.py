@@ -238,12 +238,17 @@ def plot_read_position():
         )
 
 
-def plot_heatmap(suffix=None, pdf_fp=None):
+def plot_heatmap(suffix=None, pdf_fp=None, norm=None, csv_fp=None):
 
     print("Plotting files with the suffix: " + suffix)
     
     # Read the tables
     df = read_files(suffix, melt=True)
+
+    # Divide the value by the normalization factor by specimen
+    df = df.assign(
+        prop=df.value / df.specimen.apply(norm.get)
+    )
 
     # Format the base change as a string
     df = df.assign(
@@ -254,8 +259,12 @@ def plot_heatmap(suffix=None, pdf_fp=None):
     ).pivot(
         columns="specimen",
         index='base_change',
-        values="value"
+        values="prop"
     )
+
+    # Save the table to CSV
+    print(f"Saving to {csv_fp}")
+    df.to_csv(csv_fp)
 
     # Remove any rows which lack observations
     df = df.loc[df.sum(axis=1) > 0]
@@ -272,7 +281,7 @@ def plot_heatmap(suffix=None, pdf_fp=None):
     # Open the output
     with PdfPages(pdf_fp) as pdf:
 
-        # Make a plot with the number of counts per change
+        # Make a plot with the rate of counts per change
         sns.heatmap(df, cmap="Blues")
         plt.yticks(rotation=0)
         plt.ylabel("Base Change")
@@ -280,20 +289,61 @@ def plot_heatmap(suffix=None, pdf_fp=None):
         pdf.savefig(bbox_inches="tight")
         plt.close()
 
-        # Make a plot with the proportion of counts per change
-        sns.heatmap(df / df.sum().clip(lower=1), cmap="Blues")
-        plt.yticks(rotation=0)
-        plt.ylabel("Base Change")
-        plt.xlabel("")
-        pdf.savefig(bbox_inches="tight")
-        plt.close()
+
+def read_specimen_summary(suffix='.SSC.csv.gz'):
+    """Parse the SSC summary tables to get summary metrics."""
+
+    # Join together data from all files ending with .SSC.csv.gz
+    df = pd.DataFrame(
+        [
+            parse_specimen_summary(fp, fp[:-(len(suffix))])
+            for fp in os.listdir('.')
+            if fp.endswith(suffix)
+        ]
+    ).set_index('specimen')
+
+    # Calculate the rate of SNPs and adducts
+    df = df.assign(
+        adduct_rate=df.adducts / df.bases,
+        snp_rate=df.snps / df.bases,
+    )
+
+    return df
+
+def parse_specimen_summary(fp, specimen):
+    """Get specimen summary metrics from a single SSC.csv.gz file."""
+    df = pd.read_csv(fp)
+
+    return dict(
+        specimen=specimen,
+        dsc=df.shape[0],
+        bases=df.merged_len.sum(),
+        adducts=df.n_adducts.sum(),
+        snps=df.n_mutations.sum()
+    )
+
+# Get the total number of sequenced bases per specimen
+specimen_summary = read_specimen_summary()
+
+# Save the specimen summary
+specimen_summary.to_csv("summary.csv")
 
 # Summary of mutations by base -> base
 # {specimen}.snps_by_base.csv.gz
-plot_heatmap(suffix=".snps_by_base.csv.gz", pdf_fp="snps_by_base.pdf")
+plot_heatmap(
+    suffix=".snps_by_base.csv.gz",
+    pdf_fp="snps_by_base.pdf",
+    csv_fp="snps_by_base.csv",
+    norm=specimen_summary.bases
+)
 # Summary of adducts by base -> base
 # {specimen}.adducts_by_base.csv.gz
-plot_heatmap(suffix=".adducts_by_base.csv.gz", pdf_fp="adducts_by_base.pdf")
+plot_heatmap(
+    suffix=".adducts_by_base.csv.gz",
+    pdf_fp="adducts_by_base.pdf",
+    csv_fp="adducts_by_base.csv",
+    norm=specimen_summary.bases
+)
 
 plot_ssc_summary()
 plot_read_position()
