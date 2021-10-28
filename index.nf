@@ -7,7 +7,6 @@ nextflow.enable.dsl=2
 params.help = false
 params.genome_fasta = false
 params.output = false
-params.genome = false
 
 // If specified, do not run RepeatMasker on the genome before indexing
 params.skip_repeatmasker = false
