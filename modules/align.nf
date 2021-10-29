@@ -9,7 +9,7 @@ process shard {
     label "io_limited"
     
     input:
-    tuple val(specimen), path(R1), path(R2)
+    tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")
 
     output:
     tuple val(specimen), path("shard.*.R1.fastq.gz"), path("shard.*.R2.fastq.gz")
@@ -107,13 +107,16 @@ workflow align_wf{
     take:
     reads_ch
     ref
+    barcodes_csv_ch
 
     main:
 
     // Break up the unaligned reads into shards which
     // each contain complete sets of barcodes
     shard(
-        reads_ch
+        reads_ch.join(
+            barcodes_csv_ch
+        )
     )
     // output:
     // tuple val(specimen), path("shard.*.R1.fastq.gz"), path("shard.*.R2.fastq.gz")

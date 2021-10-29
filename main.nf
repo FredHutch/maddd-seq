@@ -237,8 +237,12 @@ workflow {
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
+        // WGS data in FASTQ format
         trim_wf.out.reads,
-        genome_ref
+        // Reference genome, indexed for alignment with BWA
+        genome_ref,
+        // Table linking each uncorrected barcode to its corrected sequence
+        barcodes_wf.out.csv
     )
     // output:
     //   bam:

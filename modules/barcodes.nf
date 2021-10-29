@@ -92,21 +92,6 @@ process plot_barcodes {
 
 }
 
-// Apply the corrected barcode sequences to the FASTQ data
-process update_barcodes {
-    container "${params.container__pandas}"
-    label "io_limited"
-
-    input:
-    tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")
-
-    output:
-    tuple val(specimen), path("${R1.name.replaceAll(/.fastq.gz/, '')}.corrected.fastq.gz"), path("${R2.name.replaceAll(/.fastq.gz/, '')}.corrected.fastq.gz"), emit: reads
-
-    script:
-    template 'update_barcodes.py'
-
-}
 
 workflow barcodes_wf{
 
