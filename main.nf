@@ -228,8 +228,7 @@ workflow {
     //   bam:
     //     tuple val(specimen), path(bam)
     // publish:
-    //   3_end_trimmed/fastqc/multiqc_report.html
-    //   3_end_trimmed/cutadapt/multiqc_report.html
+    //   3_end_trimmed/multiqc_report.html
 
     // The pre-compiled genome reference is provided as an input
     // It must contain a wildcard capturing all required index files

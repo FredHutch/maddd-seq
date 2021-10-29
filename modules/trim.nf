@@ -23,7 +23,7 @@ process fixed_trim {
 // Combine all FASTQC data into a single report
 process multiqc {
     container "${params.container__multiqc}"
-    publishDir "${params.output}/3_end_trimmed/fastqc/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/3_end_trimmed/", mode: 'copy', overwrite: true
     label "io_limited"
 
     input:

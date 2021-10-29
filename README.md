@@ -78,7 +78,7 @@ Figure displaying the distribution of the number of reads sequenced per barcode
 2_barcode_trimmed/multiqc_report.html
 Summary of sequence quality after trimming barcodes
 
-3_end_trimmed/fastqc/multiqc_report.html
+3_end_trimmed/multiqc_report.html
 Summary of sequence quality after trimming additional bases from the 5' end of each read
 
 4_aligned/multiqc_report.html
