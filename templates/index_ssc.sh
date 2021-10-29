@@ -6,7 +6,7 @@ set -euo pipefail
 OUTPUT_BAM="${output_filename}"
 
 # Sort the BAM
-samtools sort -o "\$OUTPUT_BAM" unfiltered.bam
+samtools sort --threads ${task.cpus} -o "\$OUTPUT_BAM" unfiltered.bam
 echo "Sorting unfiltered.bam -> \$OUTPUT_BAM"
 
 # Indexing the BAM

@@ -74,7 +74,7 @@ process align_ssc {
 // have changed after the realignment of SSCs
 process filter_ssc_position {
     container "${params.container__pandas}"
-    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.csv.gz"
     label "mem_medium"
     
     input:
@@ -85,6 +85,23 @@ process filter_ssc_position {
 
     script:
     template 'filter_ssc_position.py'
+
+}
+
+// Sort and index the SSC BAM files
+process sort_ssc_bam {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true
+    label "mem_medium"
+    
+    input:
+    tuple val(specimen), path("unsorted.POS.SSC.bam"), path("unsorted.NEG.SSC.bam"), path("SSC.details.csv.gz")
+
+    output:
+    file "*"
+
+    script:
+    template 'sort_ssc_bam.sh'
 
 }
 
@@ -159,6 +176,11 @@ workflow family_wf{
     //   tuple val(specimen), path(POS_BAM), path(NEG_BAM), path(SSC_STATS/*csv.gz)
     // output:
     //   tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
+
+    // Sort and index the SSC BAM files
+    sort_ssc_bam(
+        filter_ssc_position.out
+    )
 
     emit:
     bam = filter_ssc_position.out
