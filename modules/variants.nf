@@ -150,6 +150,8 @@ workflow variants_wf{
     bam_ch
     // tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
     genome_ref
+    // CSV with the number of reads per barcode, for each specimen
+    barcode_counts
 
     main:
 
@@ -244,6 +246,9 @@ workflow variants_wf{
                     .out
                     .csv
                     .flatten()
+            )
+            .mix(
+                barcode_counts
             )
             .toSortedList()
     )

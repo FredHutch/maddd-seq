@@ -44,7 +44,11 @@ def read_files(suffix, melt=False):
         # Add to the list
         output.append(df)
 
-    # Join and return
+    # If there were no files with the extension
+    if len(output) == 0:
+        return None
+
+    # Otherwise, join the DataFrames and return
     return pd.concat(output).reset_index(drop=True)
 
 
@@ -87,6 +91,7 @@ def plot_lines(
     plt.legend(bbox_to_anchor=[1.1, 0.9])
     annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
 
+
 def plot_bars(
     v,
     pdf=None,
@@ -98,12 +103,16 @@ def plot_bars(
     v.sort_values(ascending=False).plot(kind='barh')
     annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
 
-    # Make the plot - sorted by specimen names
-    v.sort_index().plot(kind='barh')
-    annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
 
+def annotate_and_save(xlabel=None, ylabel=None, pdf=None, title=None, logx=False, logy=False):
 
-def annotate_and_save(xlabel=None, ylabel=None, pdf=None, title=None):
+    # Log-transform x-axis
+    if logx:
+        plt.xscale('log')
+
+    # Log-transform y-axis
+    if logy:
+        plt.yscale('log')
 
     # Set the title
     if title is not None:
@@ -124,126 +133,166 @@ def annotate_and_save(xlabel=None, ylabel=None, pdf=None, title=None):
     # Close the plot
     plt.close()
 
+
+# Specimen-level metrics
+def plot_specimen_summary(df, pdf):
+
+    # If there is no data
+    if df is None:
+
+        # Do not make any plot
+        return
+
+    # Plot the SNP rate per specimen
+    plot_bars(
+        df.snp_rate,
+        pdf=pdf,
+        title="SNP Rate",
+        xlabel="# of SNPs / # of sequenced bases"
+    )
+
+    # Plot the adduct rate per specimen
+    plot_bars(
+        df.adduct_rate,
+        pdf=pdf,
+        title="Adduct Rate",
+        xlabel="# of adducts / # of sequenced bases"
+    )
+
 # SSC summary metrics
 # {specimen}.SSC.csv.gz
-def plot_ssc_summary():
+def plot_ssc_summary(pdf):
 
     # Read the table
     df = read_files('.SSC.csv.gz')
 
-    # Open the output
-    with PdfPages("DSC.summary.pdf") as pdf:
+    # If there is no data
+    if df is None:
 
-        # Plot the distribution of read lengths
-        plot_distribution(
-            df,
-            "rlen_fwd",
-            pdf=pdf,
-            title="Single Read Length Distribution",
-            xlabel="Length of Sequence Reads"
-        )
+        # Do not make any plot
+        return
 
-        # Plot the distribution of merged sequences
-        plot_distribution(
-            df,
-            "merged_len",
-            pdf=pdf,
-            title="Merged Read Length Distribution",
-            xlabel="Length of Merged Reads"
-        )
+    # Calculate the number of reads per DSC as the sum of
+    # the number of reads on both strands
+    df = df.assign(
+        nreads_dsc = df.nreads_pos + df.nreads_neg
+    )
 
-        # Plot the distribution of sequencing depth per DSC
-        plot_distribution(
-            df,
-            "nreads_pos",
-            pdf=pdf,
-            title="Sequencing Depth per DSC",
-            xlabel="Number of reads per strand"
-        )
+    # Plot the distribution of read lengths
+    plot_distribution(
+        df,
+        "rlen_fwd",
+        pdf=pdf,
+        title="Single Read Length Distribution",
+        xlabel="Length of Sequence Reads"
+    )
 
-        # Plot the number of DSCs per specimen
-        plot_bars(
-            df.specimen.value_counts(),
-            pdf=pdf,
-            title="Unique Sequencing Depth",
-            xlabel="Number of DSCs per Specimen"
-        )
+    # Plot the number of reads per DSC
+    plot_distribution(
+        df,
+        "nreads_dsc",
+        pdf=pdf,
+        title="DSC Sequencing Depth",
+        xlabel="Number of reads per DSC"
+    )
+    
+# Barcode saturation - number of reads per barcode
+# {specimen}.corrected_barcodes.csv
+def plot_barcode_counts(pdf):
 
-        # Compare the sequencing depth to the number of adducts
-        plot_distribution(
-            df,
-            "nreads_neg",
-            y="n_adducts",
-            pdf=pdf,
-            title="Adducts by Sequencing Depth",
-            xlabel="# of Reads per DSC",
-            ylabel="# of Adducts per DSC"
-        )
+    # Read the table
+    df = read_files('.corrected_barcodes.csv')
 
-        # Compare the sequencing depth to the number of SNPs
-        plot_distribution(
-            df,
-            "nreads_neg",
-            y="n_mutations",
-            pdf=pdf,
-            title="SNPs by Sequencing Depth",
-            xlabel="# of Reads per DSC",
-            ylabel="# of SNPs per DSC"
-        )
+    # If there is no data
+    if df is None:
 
+        # Do not make any plot
+        return
+
+    # Plot the number of reads per barcode, per specimen
+    sns.lineplot(
+        data=df,
+        x='nreads',
+        y='nbarcodes',
+        hue='specimen'
+    )
+    annotate_and_save(
+        xlabel="Number of reads per barcode",
+        ylabel="Number of barcodes",
+        title="Barcode Saturation",
+        pdf=pdf,
+        logx=True,
+        logy=True
+    )
 
 # Summary of mutations by read position
 # {specimen}.by_read_position.csv.gz
-def plot_read_position():
+def plot_read_position(pdf):
+    
     # Read the table
     df = read_files('.by_read_position.csv.gz')
+
+    # If there is no data
+    if df is None:
+
+        # Do not make any plot
+        return
 
     # Calculate the proportion of SNPs and adducts
     df = df.assign(
         snp_prop=df.snps / df.nreads,
         adduct_prop=df.adducts / df.nreads,
     )
-    
-    # Open the output
-    with PdfPages("read_position.pdf") as pdf:
 
-        plot_lines(
-            df,
-            'pos',
-            'nreads',
-            pdf=pdf,
-            xlabel="Position in Read",
-            ylabel="Number of Reads",
-            title="Sequencing Depth"
-        )
+    plot_lines(
+        df,
+        'pos',
+        'nreads',
+        pdf=pdf,
+        xlabel="Position in Read",
+        ylabel="Number of Reads",
+        title="Sequencing Depth"
+    )
 
-        plot_lines(
-            df,
-            'pos',
-            'snp_prop',
-            pdf=pdf,
-            xlabel="Position in Read",
-            ylabel="SNP Proportion",
-            title="SNP Rate by Read Position"
-        )
+    plot_lines(
+        df,
+        'pos',
+        'snp_prop',
+        pdf=pdf,
+        xlabel="Position in Read",
+        ylabel="SNP Proportion",
+        title="SNP Rate by Read Position"
+    )
 
-        plot_lines(
-            df,
-            'pos',
-            'adduct_prop',
-            pdf=pdf,
-            xlabel="Position in Read",
-            ylabel="Adduct Proportion",
-            title="Adduct Rate by Read Position"
-        )
+    plot_lines(
+        df,
+        'pos',
+        'adduct_prop',
+        pdf=pdf,
+        xlabel="Position in Read",
+        ylabel="Adduct Proportion",
+        title="Adduct Rate by Read Position"
+    )
 
 
-def plot_heatmap(suffix=None, pdf_fp=None, norm=None, csv_fp=None):
+def plot_heatmap(
+    suffix=None,
+    norm=None,
+    csv_fp=None,
+    pdf=None,
+    title=None
+):
 
     print("Plotting files with the suffix: " + suffix)
     
     # Read the tables
     df = read_files(suffix, melt=True)
+
+    # If there is no data
+    if df is None:
+
+        # Do not make any plot
+        return
 
     # Divide the value by the normalization factor by specimen
     df = df.assign(
@@ -278,27 +327,40 @@ def plot_heatmap(suffix=None, pdf_fp=None, norm=None, csv_fp=None):
 
     # Otherwise, if there is data to plot
 
-    # Open the output
-    with PdfPages(pdf_fp) as pdf:
-
-        # Make a plot with the rate of counts per change
-        sns.heatmap(df, cmap="Blues")
-        plt.yticks(rotation=0)
-        plt.ylabel("Base Change")
-        plt.xlabel("")
-        pdf.savefig(bbox_inches="tight")
-        plt.close()
+    # Make a plot with the rate of counts per change
+    sns.heatmap(df, cmap="Blues")
+    plt.yticks(rotation=0)
+    plt.ylabel("Base Change")
+    plt.xlabel("")
+    if title is not None:
+        plt.title(title)
+    pdf.savefig(bbox_inches="tight")
+    plt.close()
 
 
 def read_specimen_summary(suffix='.SSC.csv.gz'):
     """Parse the SSC summary tables to get summary metrics."""
 
-    # Join together data from all files ending with .SSC.csv.gz
+    # Get the list of files with the suffix
+    fp_list = [
+        fp
+        for fp in os.listdir('.')
+        if fp.endswith(suffix)
+    ]
+
+    # If there are no files with the suffix
+    if len(fp_list) == 0:
+
+        # Return None
+        return None
+
+    # Otherwise
+
+    # Join together data from all of those files
     df = pd.DataFrame(
         [
             parse_specimen_summary(fp, fp[:-(len(suffix))])
-            for fp in os.listdir('.')
-            if fp.endswith(suffix)
+            for fp in fp_list
         ]
     ).set_index('specimen')
 
@@ -325,25 +387,41 @@ def parse_specimen_summary(fp, specimen):
 # Get the total number of sequenced bases per specimen
 specimen_summary = read_specimen_summary()
 
-# Save the specimen summary
-specimen_summary.to_csv("summary.csv")
+# If there is data
+if specimen_summary is not None:
 
-# Summary of mutations by base -> base
-# {specimen}.snps_by_base.csv.gz
-plot_heatmap(
-    suffix=".snps_by_base.csv.gz",
-    pdf_fp="snps_by_base.pdf",
-    csv_fp="snps_by_base.csv",
-    norm=specimen_summary.bases
-)
-# Summary of adducts by base -> base
-# {specimen}.adducts_by_base.csv.gz
-plot_heatmap(
-    suffix=".adducts_by_base.csv.gz",
-    pdf_fp="adducts_by_base.pdf",
-    csv_fp="adducts_by_base.csv",
-    norm=specimen_summary.bases
-)
+    # Save the specimen summary
+    specimen_summary.to_csv("summary.csv")
 
-plot_ssc_summary()
-plot_read_position()
+# Open up a PDF for plotting
+with PdfPages("report.pdf") as pdf:
+
+    # Plot the barcode saturation
+    plot_barcode_counts(pdf)
+
+    # Plot a summary of SSC metrics
+    plot_ssc_summary(pdf)
+
+    # Plot a summary of each specimen
+    plot_specimen_summary(specimen_summary, pdf)
+
+    # Summary of mutations by base -> base
+    # {specimen}.snps_by_base.csv.gz
+    plot_heatmap(
+        suffix=".snps_by_base.csv.gz",
+        csv_fp="snps_by_base.csv",
+        norm=specimen_summary.bases,
+        pdf=pdf,
+        title="SNPs by Base"
+    )
+    # Summary of adducts by base -> base
+    # {specimen}.adducts_by_base.csv.gz
+    plot_heatmap(
+        suffix=".adducts_by_base.csv.gz",
+        csv_fp="adducts_by_base.csv",
+        norm=specimen_summary.bases,
+        pdf=pdf,
+        title="Adducts by Base"
+    )
+
+    plot_read_position(pdf)

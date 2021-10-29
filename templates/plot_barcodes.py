@@ -42,3 +42,13 @@ plt.ylabel("Number of barcode per bin")
 plt.title("Barcode Frequency Histogram")
 plt.savefig("${specimen}.barcodes.pdf")
 print("DONE")
+
+# Save a table with just the number of counts per corrected barcode
+plot_df.query(
+    "label == 'After Correction'"
+).drop(
+    columns='label'
+).to_csv(
+    "${specimen}.corrected_barcodes.csv",
+    index=None
+)

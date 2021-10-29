@@ -267,8 +267,12 @@ workflow {
 
     // Call variants and adducts
     variants_wf(
+        // Channel with aligned SSCs and DSCs
         family_wf.out.bam,
-        genome_ref
+        // Genome sequence reference
+        genome_ref,
+        // CSV with the number of reads per barcode, for each specimen
+        barcodes_wf.out.counts
     )
     // publish:
     //   7_filtered_SSC/<specimen>/POS.SSC.bam[.bai]

@@ -84,7 +84,8 @@ process plot_barcodes {
     tuple val(specimen), path("barcode_counts.csv.gz"), path("barcode_corrections.csv.gz")
 
     output:
-    path "${specimen}.barcodes.pdf"
+    path "${specimen}.barcodes.pdf", emit:pdf
+    path "${specimen}.corrected_barcodes.csv", emit:csv
 
     script:
     template 'plot_barcodes.py'
@@ -142,16 +143,13 @@ workflow barcodes_wf{
         )
     )
 
-    // Modify the barcode in the FASTQ files to
-    // the corrected sequence
-    update_barcodes(
-        clip_barcodes.out.reads.join(
-            correct_barcode_errors.out
-        )
-    )
-
     emit:
-    reads = update_barcodes.out.reads
+    // The reads have not yet had their barcodes corrected, but
+    // they have been clipped from the sequence and moved to a header
+    reads = clip_barcodes.out.reads
+    // The CSV maps each barcode to its corrected form
     csv = correct_barcode_errors.out
+    // The channel contains 1 CSV per specimen, which contains the number of reads per corrected barcode
+    counts = plot_barcodes.out.csv
 
 }
