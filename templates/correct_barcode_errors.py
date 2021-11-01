@@ -38,10 +38,6 @@ barcode_len = ${params.barcode_length}
 logger.info(f"All barcodes should be {barcode_len}bp")
 assert isinstance(barcode_len, int)
 
-# MAXIMUM HOMOPOLYMER LENGTH
-max_homopolymer = int("${params.barcode_max_homopolymer}")
-logger.info(f"Removing any barcodes with homopolymers longer than {max_homopolymer}bps")
-
 # MAXIMUM NUMBER OF MISMATCHES BETWEEN BARCODES
 max_barcode_mismatch = int("${params.max_barcode_mismatch}")
 logger.info(f"Maximum barcode mismatch: {max_barcode_mismatch}")
@@ -100,25 +96,6 @@ def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G']):
 
     # If none of the characters matched, return False
     return False
-
-
-def passes_quality_filter(bc):
-    """Return True if the barcode sequence passes quality checks"""
-
-    # If the barcode contains any N's
-    if "N" in bc or "n" in bc:
-
-        # It fails
-        return False
-
-    # If the barcode contains a homopolymer of length max_homopolymer + 1
-    if has_homopolymer(bc, max_homopolymer + 1):
-
-        # It fails
-        return False
-
-    # If passes
-    return True
 
 
 def make_barcode_index(barcodes):
