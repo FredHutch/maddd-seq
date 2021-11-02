@@ -25,7 +25,7 @@ def helpMessage() {
     log.info"""
 Usage:
 
-nextflow run FredHutch/wgs-duplex-seq/index.nf <ARGUMENTS>
+nextflow run FredHutch/maddd-seq/index.nf <ARGUMENTS>
 
 Required Arguments:
   --genome_fasta        Reference genome in FASTA format

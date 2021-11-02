@@ -71,7 +71,7 @@ def helpMessage() {
     log.info"""
 Usage:
 
-nextflow run FredHutch/wgs-duplex-seq <ARGUMENTS>
+nextflow run FredHutch/maddd-seq <ARGUMENTS>
 
 Input Data:
   --sample_sheet        CSV file listing samples with headers: specimen, R1, and R2
