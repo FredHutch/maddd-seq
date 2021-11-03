@@ -201,6 +201,7 @@ workflow {
         exit 1
     }
 
+    // If the file specified by --genome_json does not exist
     if ( params.genome_json && !file(params.genome_json).exists() ) {
         log.info"""
         ERROR: --genome_json file ${params.genome_json} does not exist
@@ -208,10 +209,13 @@ workflow {
         exit 1
     }
 
+    // We parse either --genome_json or --genome to set
+    // the params.genome_path and params.target_regions_bed_path variables
+    // The '_path' variables are used in all modules/calls below.
     // If the user provided a genome json mapping
     if ( params.genome_json ) {
+        // Get the genome_map as an NF map from the JSON dict
         genome_map = new JsonSlurper().parseText( file(params.genome_json).text )
-        genome_map_partial = genome_map["${params.genome_key}"]
         if ( ! genome_map["${params.genome_key}"] ) {
             log.info"""
             ERROR: --genome_key ${params.genome_key} does not exist in --genome_json ${params.genome_json}
@@ -220,19 +224,14 @@ workflow {
         }
         params.genome_path = genome_map["${params.genome_key}"]['genome']
 
-        //String configJSON = new File("${params.wfconfig}").text
-        //def wfi = jsonSlurper.parseText(configJSON)
-        
         // Use the genome json map's target region bed only
         // if the parameter was not passed in
         if ( !params.target_regions_bed ) {
             params.target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
         } else {
+            // use the target_regions_bed param if it was passed in
             params.target_regions_bed_path = params.target_regions_bed
         }
-        log.info"""
-        Using --genome_json argument
-        """.stripIndent()
     } else {
         // If the user provided a genome via --genome
         params.genome_path = params.genome
