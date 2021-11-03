@@ -85,6 +85,8 @@ Required Arguments:
   --output              Folder to write output files to
   --genome              Reference genome indexed for alignment by BWA
   --barcodes            Path to text file containing the barcode whitelist
+  --genome_json         JSON encoded dict mapping keys to `genome` (required) and `target_regions_bed` (optional)
+  --genome_key          Key corresponding to entry in `genome_json`
 
 Optional Arguments:
   --min_qvalue          Minimum quality score used to trim data (default: ${params.min_qvalue})
