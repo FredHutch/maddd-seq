@@ -1,4 +1,6 @@
 #!/usr/bin/env nextflow
+import groovy.json.JsonSlurper
+def jsonSlurper = new JsonSlurper()
 
 // Using DSL-2
 nextflow.enable.dsl=2
@@ -10,6 +12,8 @@ params.fastq_folder = false
 params.fastq_suffix = ".fastq.gz"
 params.output = false
 params.genome = false
+params.genome_json = false
+params.genome_key = false
 params.barcodes = false
 
 // Quality trimming
@@ -83,9 +87,11 @@ Input Data:
 
 Required Arguments:
   --output              Folder to write output files to
-  --genome              Reference genome indexed for alignment by BWA
   --barcodes            Path to text file containing the barcode whitelist
-  --genome_json         JSON encoded dict mapping keys to `genome` (required) and `target_regions_bed` (optional)
+
+  --genome              Reference genome indexed for alignment by BWA.
+  -or-
+  --genome_json         JSON encoded dict mapping keys to `genome` (required) and `target_regions_bed` (optional).
   --genome_key          Key corresponding to entry in `genome_json`
 
 Optional Arguments:
@@ -142,7 +148,7 @@ workflow {
 
     // Show help message if the user specifies the --help flag at runtime
     // or if --genome and --output are not provided
-    if ( params.help || params.output == false || params.genome == false ){
+    if ( params.help || params.output == false ){
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
@@ -165,6 +171,72 @@ workflow {
         View help text with --help for more details.
         """.stripIndent()
         exit 1
+    }
+
+    // Check on the combinations of genome parameter inputs
+    // If both --genome and --genome_json are provided
+    if ( params.genome && params.genome_json ){
+        log.info"""
+        ERROR: Must provide only one of --genome or --genome_json, not both.
+        View help text with --help for more details.
+        """.stripIndent()
+        exit 1
+    }
+
+    // If neither --genome and --genome_json are provided
+    if ( !params.genome && !params.genome_json ){
+        log.info"""
+        ERROR: Must provide either --genome or --genome_json
+        View help text with --help for more details.
+        """.stripIndent()
+        exit 1
+    }
+
+    // If --genome_json is provided but not --genome_key
+    if ( params.genome_json && !params.genome_key ){
+        log.info"""
+        ERROR: Must provide --genome_key when using --genome_json
+        View help text with --help for more details.
+        """.stripIndent()
+        exit 1
+    }
+
+    if ( params.genome_json && !file(params.genome_json).exists() ) {
+        log.info"""
+        ERROR: --genome_json file ${params.genome_json} does not exist
+        """.stripIndent()
+        exit 1
+    }
+
+    // If the user provided a genome json mapping
+    if ( params.genome_json ) {
+        genome_map = new JsonSlurper().parseText( file(params.genome_json).text )
+        genome_map_partial = genome_map["${params.genome_key}"]
+        if ( ! genome_map["${params.genome_key}"] ) {
+            log.info"""
+            ERROR: --genome_key ${params.genome_key} does not exist in --genome_json ${params.genome_json}
+            """.stripIndent()
+            exit 1
+        }
+        params.genome_path = genome_map["${params.genome_key}"]['genome']
+
+        //String configJSON = new File("${params.wfconfig}").text
+        //def wfi = jsonSlurper.parseText(configJSON)
+        
+        // Use the genome json map's target region bed only
+        // if the parameter was not passed in
+        if ( !params.target_regions_bed ) {
+            params.target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
+        } else {
+            params.target_regions_bed_path = params.target_regions_bed
+        }
+        log.info"""
+        Using --genome_json argument
+        """.stripIndent()
+    } else {
+        // If the user provided a genome via --genome
+        params.genome_path = params.genome
+        params.target_regions_bed_path = params.target_regions_bed
     }
 
     // If the user provided a sample sheet
@@ -234,7 +306,7 @@ workflow {
 
     // The pre-compiled genome reference is provided as an input
     // It must contain a wildcard capturing all required index files
-    genome_ref = Channel.fromPath("${params.genome}").toSortedList()
+    genome_ref = Channel.fromPath("${params.genome_path}").toSortedList()
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
