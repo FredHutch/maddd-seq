@@ -179,7 +179,7 @@ workflow variants_wf{
     )
 
     // If the user specified a file with --ignore_coordinates
-    if ( params.ignore_coordinates & params.ignore_coordinates.length() > 1 ) {
+    if ( params.ignore_coordinates && params.ignore_coordinates.length() > 1 ) {
 
         // Then point to that file
         ignore_coordinates = file(params.ignore_coordinates)
