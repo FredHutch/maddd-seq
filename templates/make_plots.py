@@ -405,23 +405,26 @@ with PdfPages("report.pdf") as pdf:
     # Plot a summary of each specimen
     plot_specimen_summary(specimen_summary, pdf)
 
-    # Summary of mutations by base -> base
-    # {specimen}.snps_by_base.csv.gz
-    plot_heatmap(
-        suffix=".snps_by_base.csv.gz",
-        csv_fp="snps_by_base.csv",
-        norm=specimen_summary.bases,
-        pdf=pdf,
-        title="SNPs by Base"
-    )
-    # Summary of adducts by base -> base
-    # {specimen}.adducts_by_base.csv.gz
-    plot_heatmap(
-        suffix=".adducts_by_base.csv.gz",
-        csv_fp="adducts_by_base.csv",
-        norm=specimen_summary.bases,
-        pdf=pdf,
-        title="Adducts by Base"
-    )
+    # Only plot heatmaps if the specimen summary is available
+    if specimen_summary is not None:
+    
+        # Summary of mutations by base -> base
+        # {specimen}.snps_by_base.csv.gz
+        plot_heatmap(
+            suffix=".snps_by_base.csv.gz",
+            csv_fp="snps_by_base.csv",
+            norm=specimen_summary.bases,
+            pdf=pdf,
+            title="SNPs by Base"
+        )
+        # Summary of adducts by base -> base
+        # {specimen}.adducts_by_base.csv.gz
+        plot_heatmap(
+            suffix=".adducts_by_base.csv.gz",
+            csv_fp="adducts_by_base.csv",
+            norm=specimen_summary.bases,
+            pdf=pdf,
+            title="Adducts by Base"
+        )
 
     plot_read_position(pdf)
