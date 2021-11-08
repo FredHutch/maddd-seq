@@ -91,8 +91,9 @@ def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
     For any position in which the read differs from the reference,
     include the reference position and the variant base in a dict.
     Skip any position which does not contain one of the `allowed_nucs`.
-    By omitting any lowercase positions, we preserve the soft masking
-    filter used by RepeatMasker and other genome curation utilities.
+    Lowercase bases in the reference will automatically be transformed
+    into uppercase. Based on this behavior, soft-masked bases will be
+    included in all of the mutational positions.
     """
 
     # Encode the output as two dicts, one for variants and one for references
@@ -112,11 +113,11 @@ def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
             continue
 
         # Get the aligned and reference bases
-        qbase = read.query_sequence[qpos]
+        qbase = read.query_sequence[qpos].upper()
         rbase = rseq[rpos - read.reference_start].upper()
 
         # If the reference base has been masked
-        if rbase not in allowed_nucs:
+        if rbase not in allowed_nucs or qbase not in allowed_nucs:
 
             # Skip it
             continue
@@ -354,19 +355,16 @@ def merge_single_family(pos_family, neg_family, allowed_bases=set(['A', 'T', 'C'
 
             # Then this is a mutation
             output['mutations'][var_pos] = pos_base
-            output['references'][var_pos] = reference_bases[var_pos]
 
         # if the strands do not agree, and the positive strand is unchanged
         elif pos_base == 'ref':
             # Add the adduct to the list
             output['adducts'][var_pos] = neg_base, 'neg'
-            output['references'][var_pos] = reference_bases[var_pos]
 
         # If the negative strand is unchanged
         elif neg_base == 'ref':
             # Add the adduct to the list
             output['adducts'][var_pos] = pos_base, 'pos'
-            output['references'][var_pos] = reference_bases[var_pos]
 
         # If neither strand matches the reference
         else:
@@ -377,8 +375,8 @@ def merge_single_family(pos_family, neg_family, allowed_bases=set(['A', 'T', 'C'
             # The negative strand is an adduct
             output['adducts'][var_pos] = neg_base, 'neg'
 
-            # Keep track of the reference base
-            output['references'][var_pos] = reference_bases[var_pos]
+        # Keep track of the reference base
+        output['references'][var_pos] = reference_bases[var_pos]
 
     return output
 
@@ -444,24 +442,8 @@ def format_output(ssc_dat):
             # Get the base of the reference at this position
             ref_base = family_dat['references'][adduct_pos]
 
-            # If the adduct is on the positive strand
-            if adduct_strand == 'pos':
-
-                # Increment the individual base change
-                adduct_base_changes[ref_base][adduct_base] += 1
-
-            # If the adduct is on the negative strand
-            else:
-
-                # Increment the individual base change from the other strand
-                adduct_base_changes[
-                    dict(
-                        A='T',
-                        T='A',
-                        C='G',
-                        G='C'
-                    )[ref_base]
-                ][adduct_base] += 1
+            # Increment the individual base change
+            adduct_base_changes[ref_base][adduct_base] += 1
 
     # Add all of the subset data to the totals
     total_counts['specimen'] = "${specimen}"
