@@ -442,8 +442,32 @@ def format_output(ssc_dat):
             # Get the base of the reference at this position
             ref_base = family_dat['references'][adduct_pos]
 
-            # Increment the individual base change
-            adduct_base_changes[ref_base][adduct_base] += 1
+            # If the adduct is on the positive strand
+            if adduct_strand == 'pos':
+
+                # Increment the individual base change
+                adduct_base_changes[ref_base][adduct_base] += 1
+
+            # If the adduct is on the negative strand
+            else:
+
+                # Increment the individual base change from the other strand
+                # Make sure to reverse complement both the read and the reference
+                adduct_base_changes[
+                    dict(
+                        A='T',
+                        T='A',
+                        C='G',
+                        G='C'
+                    )[ref_base]
+                ][
+                    dict(
+                        A='T',
+                        T='A',
+                        C='G',
+                        G='C'
+                    )[adduct_base]
+                ] += 1
 
     # Add all of the subset data to the totals
     total_counts['specimen'] = "${specimen}"
