@@ -350,6 +350,12 @@ def merge_single_family(pos_family, neg_family, allowed_bases=set(['A', 'T', 'C'
             # Set the negative strand base from the reverse read
             neg_base = family_dat['rev_neg']
 
+        # If either base is unaligned
+        if pos_base == "unaligned" or neg_base == "unaligned":
+
+            # Skip the position
+            continue
+
         # If both strands agree
         if pos_base == neg_base:
 
