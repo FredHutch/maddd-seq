@@ -210,7 +210,7 @@ workflow {
     }
 
     // We parse either --genome_json or --genome to set
-    // the params.genome_path and params.target_regions_bed_path variables
+    // the params.genome_path and target_regions_bed_path variables
     // The '_path' variables are used in all modules/calls below.
     // If the user provided a genome json mapping
     if ( params.genome_json ) {
@@ -227,15 +227,15 @@ workflow {
         // Use the genome json map's target region bed only
         // if the parameter was not passed in
         if ( !params.target_regions_bed ) {
-            params.target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
+            target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
         } else {
             // use the target_regions_bed param if it was passed in
-            params.target_regions_bed_path = params.target_regions_bed
+            target_regions_bed_path = params.target_regions_bed
         }
     } else {
         // If the user provided a genome via --genome
         params.genome_path = params.genome
-        params.target_regions_bed_path = params.target_regions_bed
+        target_regions_bed_path = params.target_regions_bed
     }
 
     // If the user provided a sample sheet
@@ -314,7 +314,9 @@ workflow {
         // Reference genome, indexed for alignment with BWA
         genome_ref,
         // Table linking each uncorrected barcode to its corrected sequence
-        barcodes_wf.out.csv
+        barcodes_wf.out.csv,
+        // Path to BED file used for filtering to target regions, if any
+        target_regions_bed_path
     )
     // output:
     //   bam:

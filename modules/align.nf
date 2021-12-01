@@ -108,6 +108,7 @@ workflow align_wf{
     reads_ch
     ref
     barcodes_csv_ch
+    target_regions_bed_path
 
     main:
 
@@ -131,10 +132,10 @@ workflow align_wf{
     bwa(shard_ch, ref)
 
     // If the user specified a --target_regions_bed
-    if ( params.target_regions_bed_path ){
+    if ( target_regions_bed_path ){
 
         // Get that file
-        target_regions_bed = file(params.target_regions_bed_path)
+        target_regions_bed = file(target_regions_bed_path)
 
         // Only keep alignments which overlap this region
         filter_target_regions(
