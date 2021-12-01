@@ -436,7 +436,7 @@ def format_output(ssc_dat):
             chr_counts[family_dat['ref_name']]['snps'] += 1
 
             # Increment the individual base change
-            snp_base_changes[family_dat['references'][snp_pos]][snp_base] += 1
+            snp_base_changes[snp_base][family_dat['references'][snp_pos]] += 1
 
         # Iterate over each of the positions with an adduct
         for adduct_pos, (adduct_base, adduct_strand) in family_dat['adducts'].items():
