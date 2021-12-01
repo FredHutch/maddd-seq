@@ -452,7 +452,7 @@ def format_output(ssc_dat):
             if adduct_strand == 'pos':
 
                 # Increment the individual base change
-                adduct_base_changes[ref_base][adduct_base] += 1
+                adduct_base_changes[adduct_base][ref_base] += 1
 
             # If the adduct is on the negative strand
             else:
@@ -465,14 +465,14 @@ def format_output(ssc_dat):
                         T='A',
                         C='G',
                         G='C'
-                    )[ref_base]
+                    )[adduct_base]
                 ][
                     dict(
                         A='T',
                         T='A',
                         C='G',
                         G='C'
-                    )[adduct_base]
+                    )[ref_base]
                 ] += 1
 
     # Add all of the subset data to the totals
