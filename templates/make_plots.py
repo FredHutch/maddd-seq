@@ -315,11 +315,8 @@ def plot_heatmap(
     print(f"Saving to {csv_fp}")
     df.to_csv(csv_fp)
 
-    # Remove any rows which lack observations
-    df = df.loc[df.sum(axis=1) > 0]
-
     # If there is no data to plot
-    if df.shape[0] == 0:
+    if df.sum().sum() == 0:
 
         # Don't make the plot
         print(f"No data found for plotting")
