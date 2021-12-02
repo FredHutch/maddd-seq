@@ -53,7 +53,7 @@ process parse_ssc {
     path "*.csv.gz", emit: csv
 
     script:
-    template 'parse_ssc.py'
+    template 'parse_ssc.sh'
 
 }
 
@@ -140,7 +140,7 @@ process make_plots {
     file "*"
 
     script:
-    template 'make_plots.py'
+    template 'make_plots.sh'
 
 }
 

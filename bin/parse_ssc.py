@@ -15,6 +15,11 @@ import json
 import os
 import pandas as pd
 import pysam
+import sys
+
+# Parse the input arguments
+specimen = sys.argv[1]
+print(f"Processing specimen: {specimen}")
 
 # Input filepaths for filtered SSC sequences
 input_pos_bam = "POS.SSC.bam"
@@ -41,19 +46,19 @@ summary_output = "summary.json.gz"
 print(f"Output path: {summary_output}")
 
 # Output path for the data grouped by contig
-chr_output = "${specimen}.by_chr.csv.gz"
+chr_output = f"{specimen}.by_chr.csv.gz"
 print(f"Output path: {chr_output}")
 
 # Output path for SNP data grouped by base change
-snps_base_output = "${specimen}.snps_by_base.csv.gz"
+snps_base_output = f"{specimen}.snps_by_base.csv.gz"
 print(f"Output path: {snps_base_output}")
 
 # Output path for adduct data grouped by base change
-adduct_base_output = "${specimen}.adducts_by_base.csv.gz"
+adduct_base_output = f"{specimen}.adducts_by_base.csv.gz"
 print(f"Output path: {adduct_base_output}")
 
 # Output path for variant data organized by position in the reads
-base_positions_output = "${specimen}.by_read_position.csv.gz"
+base_positions_output = f"{specimen}.by_read_position.csv.gz"
 print(f"Output path: {base_positions_output}")
 
 def parse_read(read):
@@ -476,7 +481,7 @@ def format_output(ssc_dat):
                 ] += 1
 
     # Add all of the subset data to the totals
-    total_counts['specimen'] = "${specimen}"
+    total_counts['specimen'] = specimen
     total_counts['by_chr'] = chr_counts
     total_counts['snp_base_changes'] = snp_base_changes
     total_counts['adduct_base_changes'] = adduct_base_changes

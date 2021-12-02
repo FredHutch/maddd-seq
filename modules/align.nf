@@ -149,7 +149,7 @@ workflow align_wf{
     }
 
     // Count up the number of aligned reads to each contig per shard
-    flagstats(bwa.out.bam)
+    flagstats(bam_ch)
 
     // Join flagstats across shards, for each specimen
     join_flagstats(flagstats.out.groupTuple())
@@ -158,6 +158,6 @@ workflow align_wf{
     multiqc_flagstats(join_flagstats.out.toSortedList())
 
     emit:
-    bam = bwa.out.bam
+    bam = bam_ch
 
 }
