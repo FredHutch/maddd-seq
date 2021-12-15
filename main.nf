@@ -271,11 +271,6 @@ workflow {
     }
 
 
-    log.info"""
-    params.save_intermediates is ${params.save_intermediates}: 
-    """.stripIndent()
-
-
     // Perform quality trimming on the ends of all reads
     quality_wf(
         fastq_ch

@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
 process extract_positions {
     container "${params.container__pandas}"
+    publishDir "${params.output}/5_all_SSC/${specimen}/extract_positions_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -24,6 +25,7 @@ process extract_positions {
 // will be encoded in the attached CSV by this step
 process assign_families {
     container "${params.container__pandas}"
+    publishDir "${params.output}/5_all_SSC/${specimen}/assign_families_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -40,6 +42,7 @@ process assign_families {
 // Compute the SSC sequences at the FASTQ level
 process make_ssc {
     container "${params.container__pandas}"
+    publishDir "${params.output}/5_all_SSC/${specimen}/make_ssc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -56,6 +59,7 @@ process make_ssc {
 // Re-align the SSC sequences against the reference
 process align_ssc {
     container "${params.container__bwa}"
+    publishDir "${params.output}/5_all_SSC/${specimen}/align_ssc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
@@ -75,6 +79,7 @@ process align_ssc {
 process filter_ssc_position {
     container "${params.container__pandas}"
     publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.csv.gz"
+    publishDir "${params.output}/5_all_SSC/${specimen}/filter_ssc_position_intermediate/", mode: 'copy', pattern: "*", enabled: params.save_intermediates
     label "mem_medium"
     
     input:

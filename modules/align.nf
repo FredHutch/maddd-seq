@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Break up the unaligned reads for each specimen into shards for processing
 process shard {
     container "${params.container__pandas}"
+    publishDir "${params.output}/4_aligned/shard_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -22,6 +23,7 @@ process shard {
 // Align reads with BWA MEM
 process bwa {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/bwa_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
@@ -39,6 +41,7 @@ process bwa {
 // Filter all alignments to those which overlap a target region
 process filter_target_regions {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/filter_target_regions_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
@@ -56,6 +59,7 @@ process filter_target_regions {
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/flagstats_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -72,6 +76,7 @@ process flagstats {
 // Join flagstats across shards per specimen
 process join_flagstats {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/join_flagstats_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:

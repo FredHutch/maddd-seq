@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Perform quality trimming on the input FASTQ data
 process fixed_trim {
     container "${params.container__cutadapt}"
+    publishDir "${params.output}/3_end_trimmed/fixed_trim_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
@@ -40,6 +41,7 @@ process multiqc {
 // Assess quality of reads after trimming a fixed length
 process fastqc {
     container "${params.container__fastqc}"
+    publishDir "${params.output}/3_end_trimmed/fastqc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
