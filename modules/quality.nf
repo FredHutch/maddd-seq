@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Assess quality of input data
 process fastqc_input {
     container "${params.container__fastqc}"
+    publishDir "${params.output}/1_input_data/fastqc_input_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -23,6 +24,7 @@ process fastqc_input {
 // Assess quality of trimmed data
 process fastqc_trimmed {
     container "${params.container__fastqc}"
+    publishDir "${params.output}/1_input_data/fastqc_trimmed_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -40,6 +42,7 @@ process fastqc_trimmed {
 // Perform quality trimming on the input FASTQ data
 process quality_trim {
     container "${params.container__cutadapt}"
+    publishDir "${params.output}/1_input_data/quality_trim_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
