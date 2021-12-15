@@ -12,6 +12,10 @@ params.output = false
 params.skip_repeatmasker = false
 params.repeatmasker_species = 'human'
 
+// If specified, publish the intermediate result files
+params.save_intermediates = false
+
+
 // Set the containers to use for each component
 params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:93deeda"
 params.container__repeatmasker = "quay.io/biocontainers/repeatmasker:4.1.2-p1"
@@ -34,6 +38,9 @@ Required Arguments:
 Optional Arguments:
   --skip_repeatmasker   If specified, do not mask repetitive elements with the RepeatMasker tool
                         (default: ${params.skip_repeatmasker})
+  --save_intermediates  If specified, publish all 'intermediate' files.
+                        These are files created by various steps but not usually published
+                        (default: ${params.save_intermediates})
 
   --repeatmasker_species
                         Species name provided to RepeatMasker (default: ${params.repeatmasker_species})

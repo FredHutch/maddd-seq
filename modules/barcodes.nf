@@ -7,6 +7,7 @@ nextflow.enable.dsl=2
 process clip_barcodes {
     container "${params.container__cutadapt}"
     publishDir "${params.output}/2_barcode_trimmed/${specimen}/", mode: 'copy', overwrite: true, pattern: "barcode_counts.csv.gz"
+    publishDir "${params.output}/2_barcode_trimmed/${specimen}/clip_barcodes_intermediate/", mode: 'copy', pattern: "*", enabled: params.save_intermediates
     label "cpu_medium"
 
     input:
@@ -25,6 +26,7 @@ process clip_barcodes {
 // Assess quality of reads after removing barcodes
 process fastqc {
     container "${params.container__fastqc}"
+    publishDir "${params.output}/2_barcode_trimmed/${specimen}/fastqc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
