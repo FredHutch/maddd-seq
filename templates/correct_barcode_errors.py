@@ -79,13 +79,11 @@ def read_barcodes(fp):
 def hamming_distance(s1, s2):
     """Return the hamming distance, the number of characters which do not match between two strings."""
 
-    return min([
-        sum(c1 != c2 for c1, c2 in zip(query, s2))
-        for query in [s1, reverse_complement(s1)]
-    ])
+    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
+    
 
-
-def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
+@lru_cache
+def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:", rc=False):
     """Compute the corrected barcode for a merged barcode."""
 
     # The input barcode sequence starts with a prefix, which
@@ -93,36 +91,53 @@ def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
     assert bc_tag.startswith(tag_prefix)
     bc = bc_tag[len(tag_prefix):]
 
+    # If the rc flag was set
+    if rc:
+
+        # Reverse complement the barcode sequence
+        bc = reverse_complement(bc)
+
     # The length of the barcode should be 2x the individual barcode length
     assert len(bc) == barcode_len * 2, bc
 
     # Split up the barcode into each half, starting with the left half
     left_bc = correct_barcode(bc[:barcode_len])
 
-    # If there was no match found
-    if left_bc is None:
+    # If there was a match found
+    if left_bc is not None:
 
-        # Then the merged barcode will be thrown out
-        return None
-
-    # Make sure that the corrected barcode is the correct length
-    assert len(left_bc) == barcode_len, (bc[:barcode_len], left_bc)
+        # Make sure that the corrected barcode is the correct length
+        assert len(left_bc) == barcode_len, (bc[:barcode_len], left_bc)
 
     # Now correct the right half
     right_bc = correct_barcode(bc[barcode_len:])
 
-    # If there was no match found
-    if right_bc is None:
+    # If there was a match found
+    if right_bc is not None:
 
-        # Then the merged barcode will be thrown out
-        return None
+        # Make sure that the corrected barcode is the correct length
+        assert len(right_bc) == barcode_len, (bc[barcode_len:], right_bc)
 
-    # Make sure that the corrected barcode is the correct length
-    assert len(right_bc) == barcode_len, (bc[barcode_len:], right_bc)
+    # If no match was found
+    if left_bc is None or right_bc is None:
 
-    # At this point, there was a match for both
-    # Return the merged barcode
-    return tag_prefix + left_bc + right_bc
+        # If the rc flag was not set
+        if not rc:
+
+            # Try to find a match with the reverse complement
+            return correct_merged_barcode(f"{tag_prefix}{bc}", tag_prefix=tag_prefix, rc=True)
+
+        # If the query we just finished was already reverse complemented
+        else:
+
+            # Return None, indicating that no match was found
+            return None
+
+    # If a match was found for both sides
+    else:
+
+        # Return the merged barcode
+        return tag_prefix + left_bc + right_bc
 
 
 # Read in the table of counts
