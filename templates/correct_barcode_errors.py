@@ -12,7 +12,7 @@ from functools import lru_cache
 import logging
 import os
 import pandas as pd
-import re
+from Bio.Seq import reverse_complement
 
 # Set the level of the logger to INFO
 logFormatter = logging.Formatter(
@@ -79,57 +79,10 @@ def read_barcodes(fp):
 def hamming_distance(s1, s2):
     """Return the hamming distance, the number of characters which do not match between two strings."""
 
-    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
-
-
-def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G']):
-    """Check if a string s contains a homopolymer of length n"""
-
-    # Iterate over the nucleotides
-    for c in chars:
-
-        # Check to see if there is a repeated character
-        if re.search(r'%s{%s}' % (c, n), s) is not None:
-
-            # If so, return True
-            return True
-
-    # If none of the characters matched, return False
-    return False
-
-
-def make_barcode_index(barcodes):
-    """Make a k-mer based index for a Series of barcodes."""
-
-    # Get the length of the barcodes
-    barcode_lengths = barcodes.apply(len)
-
-    # All of the barcodes should be the same length
-    barcode_lengths = barcode_lengths.unique()
-    assert barcode_lengths.shape[0] == 1, "All barcodes must be the same length"
-    barcode_length = barcode_lengths[0]
-    logger.info(f"All barcodes are {barcode_length}bp")
-
-    # Set the index size based on the number of mismatches
-    index_k = int(barcode_length / max_barcode_mismatch)
-
-    # The smallest value of k that we will allow is 4
-    assert index_k >= 4, f"Cannot allow {max_barcode_mismatch} mismatches for barcodes of {barcode_length}bp"
-
-    logger.info(f"Using an index size of {index_k}bp")
-
-    # Transform the barcodes into a list of sets
-    return [
-        set(list(get_kmers(bc, index_k)))
-        for bc in barcodes.values
-    ]
-
-
-def get_kmers(bc, k, step=4):
-    "Yield the kmers of size `k` from string `bc`"
-    
-    for i in range(0, len(bc) - k, step):
-        yield bc[i: (i + k)]
+    return min([
+        sum(c1 != c2 for c1, c2 in zip(query, s2))
+        for query in [s1, reverse_complement(s1)]
+    ])
 
 
 def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
