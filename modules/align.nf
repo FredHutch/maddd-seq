@@ -10,19 +10,35 @@ include { bwa as realign_bwa } from './bwa'
 // Import the process used to extract the positions of each read
 include { extract_positions } from './family'
 
-// Break up the unaligned reads for each specimen into shards for processing
-process shard {
+// Break up the corrected barcodes for each specimen into shards
+process shard_barcodes {
     container "${params.container__pandas}"
     label "io_limited"
     
     input:
-    tuple val(specimen), path(R1), path(R2), path("barcode_corrections.csv.gz")
+    tuple val(specimen), path("barcode_corrections.csv.gz")
 
     output:
-    tuple val(specimen), path("shard.*.R1.fastq.gz"), path("shard.*.R2.fastq.gz")
+    tuple val(specimen), path("shard.*.barcode_corrections.csv.gz")
 
     script:
-    template 'shard.py'
+    template 'shard_barcodes.py'
+
+}
+
+// Break up the unaligned reads for each specimen into shards for processing
+process shard_reads {
+    container "${params.container__pandas}"
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), val(shard_ix), path(R1), path(R2), path(shard_barcodes_csv)
+
+    output:
+    tuple val(specimen), val(shard_ix), path("${shard_ix}.R1.fastq.gz"), path("${shard_ix}.R2.fastq.gz")
+
+    script:
+    template 'shard_reads.py'
 
 }
 
@@ -118,24 +134,35 @@ workflow align_wf{
 
     main:
 
-    // Break up the unaligned reads into shards which
-    // each contain complete sets of barcodes
-    shard(
-        reads_ch.join(
-            barcodes_csv_ch
-        )
+    // Break up the barcodes into shards which can be analyzed in parallel
+    shard_barcodes(
+        barcodes_csv_ch
+    )
+
+    // Break up the unaligned reads for each specimen into those shards so
+    // that each file contains the complete set for each barcode
+    shard_reads(
+        reads_ch
+            .join(shard_barcodes.out)
+            .transpose()
+            .map {
+                [
+                    it[0],                   // Specimen ID
+                    it[3].name.replaceAll(   // Shard index
+                        '.barcode_corrections.csv.gz',
+                        ''
+                    ),
+                    it[1],                   // R1 FASTQ
+                    it[2],                   // R2 FASTQ
+                    it[3]                    // Barcode list
+                ]
+            }
     )
     // output:
-    // tuple val(specimen), path("shard.*.R1.fastq.gz"), path("shard.*.R2.fastq.gz")
-
-    // The output of shard() needs to be transformed to
-    // tuple val(specimen), val(shard_ix), path(R1), path(R2)
-    shard_ch = shard.out.transpose().map {
-        [it[0], it[1].name.replaceAll('.R1.fastq.gz', ''), it[1], it[2]]
-    }
+    // tuple val(specimen), val(shard_ix), path("${shard_ix}.R1.fastq.gz"), path("${shard_ix}.R2.fastq.gz")
 
     // Align all of the reads
-    align_bwa(shard_ch, ref)
+    align_bwa(shard_reads.out, ref)
 
     // If the user specified a --target_regions_bed
     if ( target_regions_bed_path ){
