@@ -99,7 +99,7 @@ def correct_merged_barcode(merged_barcode):
 
     # Get the best match for the reverse complement of the second half
     right_match, right_score = find_best_match(
-        reverse_complement(merged_barcode[barcode_len:])
+        merged_barcode[barcode_len:]
     )
 
     # If there is no single best match
