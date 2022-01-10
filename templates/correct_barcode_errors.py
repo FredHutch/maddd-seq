@@ -205,7 +205,7 @@ df = df.assign(
 # Drop any barcodes which could not be corrected
 df = df.dropna()
 assert df.shape[0] > 0, "Could not find any barcode matches"
-logger.info(f"Output: {df.shape[0]:,} barcodes with {df['count'].sum():,} total counts")
+logger.info(f"Output: {df.corrected.unique().shape[0]:,} barcodes with {df['count'].sum():,} total counts")
 
 # Write to the file
 logger.info(f"Writing out to {fp_out}")
