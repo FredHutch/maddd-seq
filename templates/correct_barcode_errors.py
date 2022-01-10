@@ -184,7 +184,7 @@ def strip_tag_prefix(s, tag_prefix="BC:Z:"):
 
 def add_tag_prefix(s, tag_prefix="BC:Z:"):
 
-    return f"{tag_prefix}{s}"
+    return None if s is None else f"{tag_prefix}{s}"
 
 
 # Add a column to the DataFrame with the corrected barcode
