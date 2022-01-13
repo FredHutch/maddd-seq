@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
-samtools merge -o ${specimen}.${params.file_label}.bam input_bam/*.bam
-
-samtools index ${specimen}.${params.file_label}.bam
+samtools \
+    merge \
+    --write-index \
+    --threads ${task.cpus} \
+    ${specimen}.${params.file_label}.bam \
+    input_bam/*.bam
