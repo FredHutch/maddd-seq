@@ -61,6 +61,11 @@ print(f"Output path: {adduct_base_output}")
 base_positions_output = f"{specimen}.by_read_position.csv.gz"
 print(f"Output path: {base_positions_output}")
 
+# Output path for adduct information formatted as GTF
+adduct_gtf_output = f"{specimen}.adduct.gtf"
+print(f"Output path: {adduct_gtf_output}")
+
+
 def parse_read(read):
     """
     For a single read, capture the following information:
@@ -195,6 +200,9 @@ def merge_strands(pos_ssc, neg_ssc):
         adducts=defaultdict(int)
     )
 
+    # Keep a list of adducts
+    adducts = []
+
     # Iterate over each family
     for family_id in pos_ssc:
 
@@ -203,6 +211,12 @@ def merge_strands(pos_ssc, neg_ssc):
 
         # Merge data from fwd/rev, pos/neg
         output[family_id] = merge_single_family(pos_ssc.get(family_id), neg_ssc.get(family_id))
+
+        # Add any adducts to the list
+        add_adduct_info(
+            output[family_id],
+            adducts
+        )
 
         # Add the nreads/snps/adducts data as a function of read position
         add_base_position_info(
@@ -215,7 +229,7 @@ def merge_strands(pos_ssc, neg_ssc):
         # Add the number of aligned bases
         output[family_id]['nbases'] = calc_nbases(pos_ssc.get(family_id), neg_ssc.get(family_id))
 
-    return output, base_positions
+    return output, base_positions, adducts
 
 
 def get_read_pos(ref_pos, pos_family):
@@ -223,6 +237,85 @@ def get_read_pos(ref_pos, pos_family):
     return min(
         abs(pos_family['fwd']['start'] - ref_pos),
         abs(pos_family['rev']['start'] - ref_pos)
+    )
+
+
+def add_adduct_info(merged_family, adducts):
+    """Add any detected adducts to the list."""
+
+    # Iterate over every detected adduct
+    for pos, base_tuple in merged_family['adducts'].items():
+
+        # Unpack the tuple
+        adduct_base, strand = base_tuple
+
+        # Get the reference base
+        ref_base = merged_family['references'][pos]
+
+        # If the adduct is on the negative strand
+        if strand == 'neg':
+
+            # Complement both the adduct base and the reference base
+            adduct_base = complement(adduct_base)
+            ref_base = complement(ref_base)
+
+        # Format the adduct information as a dict
+        adducts.append(
+            dict(
+                seqname=merged_family['ref_name'],
+                # 0-index -> 1-index
+                start=pos + 1,
+                end=pos + 1,
+                strand="+" if strand == "pos" else "-",
+                attribute=f'adduct "{ref_base}"; read_as "{adduct_base}"'
+            )
+        )
+
+
+def write_adducts(adducts):
+    """Write out the adduct information in GTF format."""
+
+    # If there are no adducts
+    if len(adducts) == 0:
+
+        print("No adducts found, skipping")
+        return
+
+    else:
+
+        print(f"Writing out {len(adducts):,} adducts in GTF format")
+
+    # Convert to a DataFrame
+    adducts = pd.DataFrame(adducts)
+
+    # Add in the fixed columns and resort
+    adducts = adducts.assign(
+        source=specimen,
+        feature="adduct",
+        score='.',
+        frame='.'
+    ).reindex(
+        columns=[
+            "seqname",
+            "source",
+            "feature",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "frame",
+            "attribute"
+        ]
+    ).sort_values(
+        by=['seqname', 'start']
+    )
+
+    # Write out as TSV
+    adducts.to_csv(
+        adduct_gtf_output,
+        sep="\t",
+        index=None,
+        quoting=3
     )
 
 
@@ -465,19 +558,9 @@ def format_output(ssc_dat):
                 # Increment the individual base change from the other strand
                 # Make sure to reverse complement both the read and the reference
                 adduct_base_changes[
-                    dict(
-                        A='T',
-                        T='A',
-                        C='G',
-                        G='C'
-                    )[adduct_base]
+                    complement(adduct_base)
                 ][
-                    dict(
-                        A='T',
-                        T='A',
-                        C='G',
-                        G='C'
-                    )[ref_base]
+                    complement(ref_base)
                 ] += 1
 
     # Add all of the subset data to the totals
@@ -499,13 +582,27 @@ def format_output(ssc_dat):
 
     return total_counts, pd.DataFrame(chr_counts), snp_base_changes, adduct_base_changes
 
+
+def complement(base):
+    """Return the complementary base."""
+
+    return dict(
+        A='T',
+        T='A',
+        C='G',
+        G='C'
+    )[base]
+
 # Parse the information from the positive strand
 pos_ssc = parse_bam(input_pos_bam)
 # Parse the information from the negative strand
 neg_ssc = parse_bam(input_neg_bam)
 
 # Join all of the information from both strands
-ssc_dat, base_positions = merge_strands(pos_ssc, neg_ssc)
+ssc_dat, base_positions, adducts = merge_strands(pos_ssc, neg_ssc)
+
+# Save the adduct information as GTF
+write_adducts(adducts)
 
 # Save the total information to JSON
 with gzip.open(total_output, "wt") as handle:
