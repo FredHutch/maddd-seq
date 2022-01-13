@@ -6,6 +6,11 @@ nextflow.enable.dsl=2
 // Import the BWA alignment process with two distinct aliases
 include { bwa as align_bwa } from './bwa'
 include { bwa as realign_bwa } from './bwa'
+include { merge_bam } from './bwa' addParams(
+    subfolder: '4_aligned/reads',
+    file_label: 'aligned',
+    publish: true
+)
 
 // Import the process used to extract the positions of each read
 include { extract_positions } from './family'
@@ -72,6 +77,23 @@ process trim_overhang {
 
     script:
     template 'trim_overhang.sh'
+
+}
+
+// Merge paired FASTQ files across shards
+process trim_overhang_join_shards {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/trim_overhang/${specimen}/", mode: 'copy', overwrite: true
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), path("R1/"), path("R2/")
+
+    output:
+    tuple path("${specimen}_R1.fastq.gz"), path("${specimen}_R2.fastq.gz")
+
+    script:
+    template 'join_shards_fastq.sh'
 
 }
 
@@ -211,8 +233,27 @@ workflow align_wf{
         bam_positions_ch
     )
 
+    // Publish the overhang-trimmed reads
+    trim_overhang_join_shards(
+        trim_overhang
+            .out
+            .map {
+                it -> [it[0], it[2], it[3]]
+            }.groupTuple()
+    )
+
     // Realign the trimmed reads to the genome
     realign_bwa(trim_overhang.out, ref)
+
+    // Publish the aligned reads after merging the BAMs from each shard
+    merge_bam(
+        realign_bwa
+            .out
+            .bam
+            .map {
+                it -> [it[0], it[2]]
+            }.groupTuple()
+    )
 
     // Count up the number of aligned reads to each contig per shard
     flagstats(realign_bwa.out)

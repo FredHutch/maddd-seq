@@ -14,3 +14,20 @@ process bwa {
     template 'bwa.sh'
 
 }
+
+// Merge a collection of alignments in sorted BAM format
+process merge_bam {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/${params.subfolder}/", mode: 'copy', overwrite: true, enabled: params.publish
+    label "cpu_medium"
+    
+    input:
+    tuple val(specimen), path("input_bam/*.bam")
+
+    output:
+    path "${specimen}.${params.file_label}.*"
+
+    script:
+    template 'merge_bam.sh'
+
+}
