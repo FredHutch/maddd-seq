@@ -65,6 +65,10 @@ print(f"Output path: {base_positions_output}")
 adduct_gtf_output = f"{specimen}.adduct.gtf"
 print(f"Output path: {adduct_gtf_output}")
 
+# Output path for a text file containing the named of all families
+# which contain adducts
+adduct_families_output = f"{specimen}.adduct.families.txt.gz"
+
 
 def parse_read(read):
     """
@@ -203,6 +207,9 @@ def merge_strands(pos_ssc, neg_ssc):
     # Keep a list of adducts
     adducts = []
 
+    # Keep a list of all families which contain adducts
+    adduct_families = []
+
     # Iterate over each family
     for family_id in pos_ssc:
 
@@ -212,11 +219,17 @@ def merge_strands(pos_ssc, neg_ssc):
         # Merge data from fwd/rev, pos/neg
         output[family_id] = merge_single_family(pos_ssc.get(family_id), neg_ssc.get(family_id))
 
-        # Add any adducts to the list
-        add_adduct_info(
-            output[family_id],
-            adducts
-        )
+        # If there are any adducts
+        if len(output[family_id]['adducts']) > 0:
+
+            # Add this family to the list
+            adduct_families.append(family_id)
+
+            # Add any adducts to the list
+            add_adduct_info(
+                output[family_id],
+                adducts
+            )
 
         # Add the nreads/snps/adducts data as a function of read position
         add_base_position_info(
@@ -229,7 +242,7 @@ def merge_strands(pos_ssc, neg_ssc):
         # Add the number of aligned bases
         output[family_id]['nbases'] = calc_nbases(pos_ssc.get(family_id), neg_ssc.get(family_id))
 
-    return output, base_positions, adducts
+    return output, base_positions, adducts, adduct_families
 
 
 def get_read_pos(ref_pos, pos_family):
@@ -599,10 +612,14 @@ pos_ssc = parse_bam(input_pos_bam)
 neg_ssc = parse_bam(input_neg_bam)
 
 # Join all of the information from both strands
-ssc_dat, base_positions, adducts = merge_strands(pos_ssc, neg_ssc)
+ssc_dat, base_positions, adducts, adduct_families = merge_strands(pos_ssc, neg_ssc)
 
 # Save the adduct information as GTF
 write_adducts(adducts)
+
+# Save the list of all families which contain adducts
+with gzip.open(adduct_families_output, "wt") as handle:
+    handle.write("\n".join(adduct_families))
 
 # Save the total information to JSON
 with gzip.open(total_output, "wt") as handle:

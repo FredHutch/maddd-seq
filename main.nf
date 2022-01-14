@@ -68,6 +68,7 @@ include { trim_wf } from './modules/trim'
 include { align_wf } from './modules/align'
 include { family_wf } from './modules/family'
 include { variants_wf } from './modules/variants'
+include { extract_wf } from './modules/extract'
 
 
 // Function which prints help message text
@@ -359,5 +360,16 @@ workflow {
     //   8_variants/<specimen>/variants.vcf
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
+
+    // Extract the reads assigned to families which contain adducts
+    extract_wf(
+        // Channel with the shards of aligned reads per specimen
+        align_wf.out.bam,
+        // Channel with the sharded assignment of reads to families
+        family_wf.out.families,
+        // Channel with the list of families which contain adducts
+        variants_wf.out.adduct_families
+        
+    )
 
 }

@@ -8,3 +8,5 @@ samtools \
     --threads ${task.cpus} \
     ${specimen}.${params.file_label}.bam \
     input_bam/*.bam
+
+samtools index ${specimen}.${params.file_label}.bam
