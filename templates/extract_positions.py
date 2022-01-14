@@ -41,8 +41,8 @@ with pysam.AlignmentFile(bam_fp, "rb") as bam, gzip.open(output_fp, "wt") as csv
                 strand = "R1" if read.is_read1 else "R2",
                 # direction = fwd / rev
                 direction = "rev" if read.is_reverse else "fwd",
-                # The position on the contig
-                pos = read.reference_end if read.is_reverse else read.reference_start,
+                # The position on the contig (transform to 1-based indexing)
+                pos = read.reference_end + 1 if read.is_reverse else read.reference_start + 1,
                 # The name of the contig that the read is aligned to
                 chr = read.reference_name,
                 # The barcode sequence
