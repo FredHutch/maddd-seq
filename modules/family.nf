@@ -127,6 +127,10 @@ workflow family_wf{
     assign_families(
         extract_positions.out
     )
+    // input:
+    //   tuple val(specimen), val(shard_ix), path("read_positions.csv.gz")
+    // output:
+    //   tuple val(specimen), val(shard_ix), path("families.csv.gz")
 
     // Compute the SSC sequences at the FASTQ level
     // Note that this requires reads from *both* strands for each family
@@ -184,5 +188,6 @@ workflow family_wf{
 
     emit:
     bam = filter_ssc_position.out
+    families = assign_families.out
 
 }
