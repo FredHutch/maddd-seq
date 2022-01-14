@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 // Filter SSCs based on the depth of sequencing
 process filter_ssc_depth {
     container "${params.container__pandas}"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/filter_ssc_depth_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -61,6 +62,7 @@ process parse_ssc {
 // Format the DSC data as BAM
 process format_dsc {
     container "${params.container__pandas}"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/format_dsc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:

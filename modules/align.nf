@@ -18,6 +18,7 @@ include { extract_positions } from './family'
 // Break up the corrected barcodes for each specimen into shards
 process shard_barcodes {
     container "${params.container__pandas}"
+    publishDir "${params.output}/4_aligned/shard_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -50,6 +51,7 @@ process shard_reads {
 // Filter all alignments to those which overlap a target region
 process filter_target_regions {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/filter_target_regions_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "cpu_medium"
     
     input:
@@ -100,6 +102,7 @@ process trim_overhang_join_shards {
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/flagstats_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -116,6 +119,7 @@ process flagstats {
 // Join flagstats across shards per specimen
 process join_flagstats {
     container "${params.container__bwa}"
+    publishDir "${params.output}/4_aligned/join_flagstats_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:

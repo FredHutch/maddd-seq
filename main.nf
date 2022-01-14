@@ -15,6 +15,7 @@ params.genome = false
 params.genome_json = false
 params.genome_key = false
 params.barcodes = false
+params.save_intermediates= false
 
 // Quality trimming
 params.min_qvalue = 20
@@ -133,6 +134,9 @@ Optional Arguments:
                         0-based coordinates used more commonly in programming languages.
   --fastq_suffix        When input data is specified by --fastq_folder (instead of --sample_sheet),
                         only files with this suffix will be used as inputs (default: ${params.fastq_suffix})
+  --save_intermediates  If specified, publish all 'intermediate' files.
+                        These are files created by various steps but not usually published
+                        (default: ${params.save_intermediates})
 
 
 Sample Sheet:

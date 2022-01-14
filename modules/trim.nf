@@ -41,6 +41,7 @@ process multiqc {
 // Assess quality of reads after trimming a fixed length
 process fastqc {
     container "${params.container__fastqc}"
+    publishDir "${params.output}/3_end_trimmed/fastqc_intermediate/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
