@@ -69,6 +69,7 @@ include { trim_wf } from './modules/trim'
 include { align_wf } from './modules/align'
 include { family_wf } from './modules/family'
 include { variants_wf } from './modules/variants'
+include { extract_wf } from './modules/extract'
 
 
 // Function which prints help message text
@@ -214,7 +215,7 @@ workflow {
     }
 
     // We parse either --genome_json or --genome to set
-    // the params.genome_path and params.target_regions_bed_path variables
+    // the params.genome_path and target_regions_bed_path variables
     // The '_path' variables are used in all modules/calls below.
     // If the user provided a genome json mapping
     if ( params.genome_json ) {
@@ -231,15 +232,15 @@ workflow {
         // Use the genome json map's target region bed only
         // if the parameter was not passed in
         if ( !params.target_regions_bed ) {
-            params.target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
+            target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
         } else {
             // use the target_regions_bed param if it was passed in
-            params.target_regions_bed_path = params.target_regions_bed
+            target_regions_bed_path = params.target_regions_bed
         }
     } else {
         // If the user provided a genome via --genome
         params.genome_path = params.genome
-        params.target_regions_bed_path = params.target_regions_bed
+        target_regions_bed_path = params.target_regions_bed
     }
 
     // If the user provided a sample sheet
@@ -318,7 +319,9 @@ workflow {
         // Reference genome, indexed for alignment with BWA
         genome_ref,
         // Table linking each uncorrected barcode to its corrected sequence
-        barcodes_wf.out.csv
+        barcodes_wf.out.csv,
+        // Path to BED file used for filtering to target regions, if any
+        target_regions_bed_path
     )
     // output:
     //   bam:
@@ -361,5 +364,16 @@ workflow {
     //   8_variants/<specimen>/variants.vcf
     //   8_variants/<specimen>/adducts.vcf
     //   8_variants/variant_summary.csv
+
+    // Extract the reads assigned to families which contain adducts
+    extract_wf(
+        // Channel with the shards of aligned reads per specimen
+        align_wf.out.bam,
+        // Channel with the sharded assignment of reads to families
+        family_wf.out.families,
+        // Channel with the list of families which contain adducts
+        variants_wf.out.adduct_families
+        
+    )
 
 }

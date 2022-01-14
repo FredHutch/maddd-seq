@@ -111,33 +111,42 @@ def write_ssc(family_reads):
         # Iteratively calculate the consensus sequences
         for cons_dict, stat in compute_ssc(family_reads):
 
-            # If there were reads from both strands
-            if cons_dict is not None:
+            # Pair R1-fwd with R2-rev, and vice versa
+            for r1_key, r2_key in [('R1-fwd', 'R2-rev'), ('R1-rev', 'R2-fwd')]:
 
-                # Both of the -R1 and -R2 sequences must be the same length, and
-                # the FWD and REV sequences cannot overhang the end of the molecules
-                for d in ['fwd', 'rev']:
-                    cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"] = trim_sscs(cons_dict[f"R1-{d}"], cons_dict[f"R2-{d}"])
+                # If there is data for R1
+                if cons_dict.get(r1_key) is not None:
 
-                # Write out each read
-                write_fastq(cons_dict["R1-fwd"], FWD_R1_HANDLE)
-                write_fastq(cons_dict["R1-rev"], REV_R1_HANDLE)
-                write_fastq(cons_dict["R2-fwd"], FWD_R2_HANDLE)
-                write_fastq(cons_dict["R2-rev"], REV_R2_HANDLE)
+                    # There must be data for R2
+                    assert cons_dict.get(r2_key) is not None, cons_dict
 
-                # Add the stats to the list
-                ssc_summary.append(stat)
+                    # Both of the -R1 and -R2 sequences must be the same length, and
+                    # the FWD and REV sequences cannot overhang the end of the molecules
+                    cons_dict[r1_key], cons_dict[r2_key] = trim_sscs(cons_dict[r1_key], cons_dict[r2_key])
 
-            # Otherwise
-            else:
+                    # Write out each read
+                    write_fastq(
+                        cons_dict[r1_key],
+                        FWD_R1_HANDLE if r1_key == 'R1-fwd' else REV_R1_HANDLE
+                    )
+                    write_fastq(
+                        cons_dict[r2_key],
+                        REV_R2_HANDLE if r2_key == 'R2-rev' else FWD_R2_HANDLE
+                    )
 
-                # Increment the counter for single-stranded data
-                n_single += 1
-
-    print(f"SSCs with data from only one strand: {n_single:,}")
+            # Add the stats to the list
+            ssc_summary.append(stat)
 
     # Convert the list of dicts to a DataFrame
-    ssc_summary = pd.DataFrame(ssc_summary)
+    ssc_summary = pd.DataFrame(
+        ssc_summary
+    ).set_index(
+        'family'
+    ).fillna(
+        0
+    ).applymap(
+        int
+    ).reset_index()
 
     print(f"Wrote out SSC data for {ssc_summary.shape[0]:,} families")
 
@@ -187,17 +196,8 @@ def compute_ssc(family_reads):
             group_stats[f"{group_name}-n"] = len(group_reads)
             group_stats[f"{group_name}-len"] = len(cons_seq)
 
-        # There must be 4 parts for each family
-        if len(group_consensus) == 4:
-
-            # Return the consensus sequences, as well as the stats
-            yield group_consensus, group_stats
-
-        else:
-
-            # There must just be reads from one starnd
-            assert len(group_consensus) == 2
-            yield None, None
+        # Return the consensus sequences, as well as the stats
+        yield group_consensus, group_stats
 
 
 def compute_consensus(group_reads):

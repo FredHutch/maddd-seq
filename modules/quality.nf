@@ -42,7 +42,7 @@ process fastqc_trimmed {
 // Perform quality trimming on the input FASTQ data
 process quality_trim {
     container "${params.container__cutadapt}"
-    publishDir "${params.output}/1_input_data/quality_trim_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/1_input_data/quality_trimmed/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.trimmed.fastq.gz"
     label "cpu_medium"
     
     input:

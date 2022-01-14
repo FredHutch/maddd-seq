@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 // Perform quality trimming on the input FASTQ data
 process fixed_trim {
     container "${params.container__cutadapt}"
-    publishDir "${params.output}/3_end_trimmed/fixed_trim_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/3_end_trimmed/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.trimmed.fastq.gz"
     label "cpu_medium"
     
     input:

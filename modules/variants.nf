@@ -52,9 +52,10 @@ process parse_ssc {
     tuple val(specimen), path("total.json.gz"), emit: json
     path "summary.json.gz"
     path "*.csv.gz", emit: csv
+    tuple val(specimen), path("${specimen}.adduct.families.txt.gz"), emit: adduct_families
 
     script:
-    template 'parse_ssc.py'
+    template 'parse_ssc.sh'
 
 }
 
@@ -93,7 +94,7 @@ process index_dsc {
 
 }
 
-// Format the output as VCF
+// Format the align DSC reads as VCF
 process format_vcf {
     container "${params.container__bcftools}"
     publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
@@ -108,6 +109,43 @@ process format_vcf {
 
     script:
     template 'format_vcf.sh'
+
+}
+
+// Format the aligned DSC reads as pileup
+process format_pileup {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), path("DSC.bam")
+    path ref
+
+    output:
+    tuple val(specimen), path("DSC.pileup.gz")
+
+    script:
+    template 'format_pileup.sh'
+
+}
+
+// Format the align DSC reads as TSV
+process format_tsv {
+    container "${params.container__pandas}"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    label "io_limited"
+    
+    input:
+    tuple val(specimen), path(pileup)
+
+    output:
+    file "${specimen}.DSC.tsv.gz"
+
+    script:
+    """#!/bin/bash
+    format_tsv.py $pileup ${specimen}.DSC.tsv.gz
+    """
 
 }
 
@@ -142,7 +180,7 @@ process make_plots {
     file "*"
 
     script:
-    template 'make_plots.py'
+    template 'make_plots.sh'
 
 }
 
@@ -223,6 +261,17 @@ workflow variants_wf{
         genome_ref
     )
 
+    // Make a pileup file
+    format_pileup(
+        index_dsc.out[0],
+        genome_ref
+    )
+
+    // Format the output as TSV
+    format_tsv(
+        format_pileup.out
+    )
+
     // Format details about all SSCs as CSV
     format_ssc_csv(
         // Format the input to this as the JSON with mutations per 
@@ -254,5 +303,8 @@ workflow variants_wf{
             )
             .toSortedList()
     )
+
+    emit:
+    adduct_families = parse_ssc.out.adduct_families
 
 }

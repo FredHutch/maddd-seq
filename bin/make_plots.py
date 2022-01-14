@@ -280,7 +280,8 @@ def plot_heatmap(
     norm=None,
     csv_fp=None,
     pdf=None,
-    title=None
+    title=None,
+    collapse_complementary=False
 ):
 
     print("Plotting files with the suffix: " + suffix)
@@ -311,15 +312,17 @@ def plot_heatmap(
         values="prop"
     )
 
+    # If complementary changes should be collapsed
+    if collapse_complementary:
+
+        df = collapse_complementary_changes(df)
+
     # Save the table to CSV
     print(f"Saving to {csv_fp}")
     df.to_csv(csv_fp)
 
-    # Remove any rows which lack observations
-    df = df.loc[df.sum(axis=1) > 0]
-
     # If there is no data to plot
-    if df.shape[0] == 0:
+    if df.sum().sum() == 0:
 
         # Don't make the plot
         print(f"No data found for plotting")
@@ -337,6 +340,34 @@ def plot_heatmap(
     pdf.savefig(bbox_inches="tight")
     plt.close()
 
+
+def collapse_complementary_changes(df):
+    """Combine all base changes which are on complementary strands."""
+
+    # Define the complementary base changes
+    complementary_changes = {
+        "A -> T": "A:T -> T:A",
+        "T -> A": "A:T -> T:A",
+        "A -> C": "A:T -> C:G",
+        "T -> G": "A:T -> C:G",
+        "A -> G": "A:T -> G:C",
+        "T -> C": "A:T -> G:C",
+        "C -> A": "C:G -> A:T",
+        "G -> T": "C:G -> A:T",
+        "C -> T": "C:G -> T:A",
+        "G -> A": "C:G -> T:A",
+        "C -> G": "C:G -> G:C",
+        "G -> C": "C:G -> G:C",
+    }
+
+    # Assign the complementary labels to the table,
+    # Group by those labels, and
+    # Compute the sum
+    return df.assign(
+        base_pair_change=list(map(complementary_changes.get, df.index.values))
+    ).groupby(
+        'base_pair_change'
+    ).sum()
 
 def read_specimen_summary(suffix='.SSC.csv.gz'):
     """Parse the SSC summary tables to get summary metrics."""
@@ -415,7 +446,8 @@ with PdfPages("report.pdf") as pdf:
             csv_fp="snps_by_base.csv",
             norm=specimen_summary.bases,
             pdf=pdf,
-            title="SNPs by Base"
+            title="SNPs by Base",
+            collapse_complementary=True
         )
         # Summary of adducts by base -> base
         # {specimen}.adducts_by_base.csv.gz
@@ -424,7 +456,8 @@ with PdfPages("report.pdf") as pdf:
             csv_fp="adducts_by_base.csv",
             norm=specimen_summary.bases,
             pdf=pdf,
-            title="Adducts by Base"
+            title="Adducts by Base",
+            collapse_complementary=False
         )
 
     plot_read_position(pdf)

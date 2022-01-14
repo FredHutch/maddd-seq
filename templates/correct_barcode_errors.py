@@ -12,7 +12,7 @@ from functools import lru_cache
 import logging
 import os
 import pandas as pd
-import re
+from Bio.Seq import reverse_complement, transcribe
 
 # Set the level of the logger to INFO
 logFormatter = logging.Formatter(
@@ -80,96 +80,49 @@ def hamming_distance(s1, s2):
     """Return the hamming distance, the number of characters which do not match between two strings."""
 
     return sum(c1 != c2 for c1, c2 in zip(s1, s2))
-
-
-def has_homopolymer(s, n, chars=['A', 'T', 'C', 'G']):
-    """Check if a string s contains a homopolymer of length n"""
-
-    # Iterate over the nucleotides
-    for c in chars:
-
-        # Check to see if there is a repeated character
-        if re.search(r'%s{%s}' % (c, n), s) is not None:
-
-            # If so, return True
-            return True
-
-    # If none of the characters matched, return False
-    return False
-
-
-def make_barcode_index(barcodes):
-    """Make a k-mer based index for a Series of barcodes."""
-
-    # Get the length of the barcodes
-    barcode_lengths = barcodes.apply(len)
-
-    # All of the barcodes should be the same length
-    barcode_lengths = barcode_lengths.unique()
-    assert barcode_lengths.shape[0] == 1, "All barcodes must be the same length"
-    barcode_length = barcode_lengths[0]
-    logger.info(f"All barcodes are {barcode_length}bp")
-
-    # Set the index size based on the number of mismatches
-    index_k = int(barcode_length / max_barcode_mismatch)
-
-    # The smallest value of k that we will allow is 4
-    assert index_k >= 4, f"Cannot allow {max_barcode_mismatch} mismatches for barcodes of {barcode_length}bp"
-
-    logger.info(f"Using an index size of {index_k}bp")
-
-    # Transform the barcodes into a list of sets
-    return [
-        set(list(get_kmers(bc, index_k)))
-        for bc in barcodes.values
-    ]
-
-
-def get_kmers(bc, k, step=4):
-    "Yield the kmers of size `k` from string `bc`"
     
-    for i in range(0, len(bc) - k, step):
-        yield bc[i: (i + k)]
 
-
-def correct_merged_barcode(bc_tag, tag_prefix="BC:Z:"):
+@lru_cache
+def correct_merged_barcode(merged_barcode):
     """Compute the corrected barcode for a merged barcode."""
 
-    # The input barcode sequence starts with a prefix, which
-    # should be removed prior to parsing
-    assert bc_tag.startswith(tag_prefix)
-    bc = bc_tag[len(tag_prefix):]
-
     # The length of the barcode should be 2x the individual barcode length
-    assert len(bc) == barcode_len * 2, bc
+    assert len(merged_barcode) == barcode_len * 2, merged_barcode
 
-    # Split up the barcode into each half, starting with the left half
-    left_bc = correct_barcode(bc[:barcode_len])
+    # Get the best match for the first half of the merged barcode
+    left_match, left_score = find_best_match(merged_barcode[:barcode_len])
 
-    # If there was no match found
-    if left_bc is None:
+    # If there is no single best match
+    if left_score is None:
 
-        # Then the merged barcode will be thrown out
         return None
 
-    # Make sure that the corrected barcode is the correct length
-    assert len(left_bc) == barcode_len, (bc[:barcode_len], left_bc)
+    # Get the best match for the reverse complement of the second half
+    right_match, right_score = find_best_match(
+        merged_barcode[barcode_len:]
+    )
 
-    # Now correct the right half
-    right_bc = correct_barcode(bc[barcode_len:])
+    # If there is no single best match
+    if right_score is None:
 
-    # If there was no match found
-    if right_bc is None:
-
-        # Then the merged barcode will be thrown out
         return None
 
-    # Make sure that the corrected barcode is the correct length
-    assert len(right_bc) == barcode_len, (bc[barcode_len:], right_bc)
+    # If the combined alignment score is above the threshold
+    if left_score + right_score > max_barcode_mismatch:
 
-    # At this point, there was a match for both
-    # Return the merged barcode
-    return tag_prefix + left_bc + right_bc
+        # Then return a null value
+        return None
+
+    # Since the ordering of the left and right is arbitrary (depending on which
+    # strand was sequenced first), the corrected barcode will have both halfs
+    # ordered alphabetically
+    if left_match < right_match:
+
+        return left_match + right_match
+
+    else:
+
+        return right_match + left_match
 
 
 # Read in the table of counts
@@ -187,12 +140,12 @@ logger.info(f"Read in a list of {len(whitelist):,} whitelist barcodes")
 # The function below is being defined after reading in the whitelist
 # so that the caching decorator can be used most effectively
 @lru_cache
-def correct_barcode(bc):
+def find_best_match(bc):
 
     # First check for an exact match
     for whitelist_bc in whitelist:
         if bc == whitelist_bc:
-            return whitelist_bc
+            return whitelist_bc, 0
 
     # Next, calculate the hamming distance for each
     whitelist_distances = {
@@ -203,38 +156,56 @@ def correct_barcode(bc):
     # Get the lowest hamming distance
     lowest_distance = min(whitelist_distances.values())
 
-    # If that distance meets the threshold
-    if lowest_distance <= max_barcode_mismatch:
+    # Get the whitelist barcodes which are at that minimum
+    best_whitelist_bcs = [
+        bc
+        for bc, d in whitelist_distances.items()
+        if d == lowest_distance
+    ]
 
-        # Get the whitelist barcodes which are at that minimum
-        best_whitelist_bcs = [
-            bc
-            for bc, d in whitelist_distances.items()
-            if d == lowest_distance
-        ]
+    # If there is only a single best match
+    if len(best_whitelist_bcs) == 1:
 
-        # If there is only a single best match
-        if len(best_whitelist_bcs) == 1:
-
-            # Then return it
-            return best_whitelist_bcs[0]
+        # Then return it, along with the number of mismatches
+        return best_whitelist_bcs[0], lowest_distance
 
     # If there was no single best match which met the threshold
-    return None
+    else:
+        return None, None
+
+
+def strip_tag_prefix(s, tag_prefix="BC:Z:"):
+
+    msg = f"All tags must start with {tag_prefix} ({s})"
+    assert s[:len(tag_prefix)] == tag_prefix, msg
+
+    return s[len(tag_prefix):]
+
+
+def add_tag_prefix(s, tag_prefix="BC:Z:"):
+
+    return None if s is None else f"{tag_prefix}{s}"
 
 
 # Add a column to the DataFrame with the corrected barcode
 # If there is no match to the whitelist, the populated value will be None
 df = df.assign(
     corrected=df['barcode'].apply(
+        # Remove the tag prefix from the query
+        strip_tag_prefix
+    ).apply(
+        # Compute the best match for the merged barcode
         lambda bc: correct_merged_barcode(bc)
+    ).apply(
+        # Add the tag prefix to the output
+        add_tag_prefix
     )
 )
 
 # Drop any barcodes which could not be corrected
 df = df.dropna()
 assert df.shape[0] > 0, "Could not find any barcode matches"
-logger.info(f"Output: {df.shape[0]:,} barcodes with {df['count'].sum():,} total counts")
+logger.info(f"Output: {df.corrected.unique().shape[0]:,} barcodes with {df['count'].sum():,} total counts")
 
 # Write to the file
 logger.info(f"Writing out to {fp_out}")
