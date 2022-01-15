@@ -77,6 +77,9 @@ def try_read_csv_list(csv_list):
 def find_consistent_families(bam_fp):
     """Return the set of families whose positions have stayed consistent after re-mapping."""
 
+    # Populate a set of read names which have been seen
+    seen = defaultdict(set)
+
     # Populate a set of read names to keep
     to_keep = defaultdict(set)
 
@@ -84,7 +87,7 @@ def find_consistent_families(bam_fp):
     multiples = set()
 
     # Keep a set of all of the index positions which have inconsistent positions
-    inconsistent_ix = set()
+    inconsistent = set()
 
     # Initialize the counter
     i = 0
@@ -95,77 +98,92 @@ def find_consistent_families(bam_fp):
         # Iterate over each read
         for read in bam:
 
-            # Parse the barcode, chromosome, and position from the read header
-            _, cname, fwd_pos, rev_pos = read.query_name.split("-")
-
-            # If the chromosome matches the expectation
-            if read.reference_name == cname:
-
-                # If the read is in the reverse direction
-                if read.is_reverse:
-
-                    # If the end of the alignment matches the expectation
-                    if abs(read.reference_end - int(rev_pos)) <= max_realign_offset:
-
-                        # If it is already in the set to keep
-                        if read.query_name in to_keep['rev']:
-
-                            # Mark it as one of the duplicated reads
-                            multiples.add(read.query_name)
-
-                        # Otherwise
-                        else:
-
-                            # Add it to the set to keep
-                            to_keep['rev'].add(read.query_name)
-
-                    else:
-                        
-                        # Keep a record that this index is inconsistent
-                        inconsistent_ix.add(i)
-
-                # If the read is in the forward direction
-                else:
-
-                    # If the start of the alignment matches the expectation
-                    if abs(read.reference_start - int(fwd_pos)) <= max_realign_offset:
-
-                        # If it is already in the set to keep
-                        if read.query_name in to_keep['fwd']:
-
-                            # Mark it as one of the duplicated reads
-                            multiples.add(read.query_name)
-
-                        # Otherwise
-                        else:
-
-                            # Add it to the set to keep
-                            to_keep['fwd'].add(read.query_name)
-
-                    else:
-
-                        # Keep a record that this index is inconsistent
-                        inconsistent_ix.add(i)
+            # Add the read to the appropriate set based on its expected and observed position
+            tally_read(read, to_keep, multiples, inconsistent, seen)
 
             # Increment the counter
             i += 1
 
     assert i > 0, "No reads found in input"
 
+    print(f"Found {len(inconsistent):,} read pairs aligning to an unexpected position")
+    print(f"Found {len(multiples):,} read pairs aligning multiple times")
+
     # Keep the reads which are aligned in the appropriate position
     # for both the forward and reverse reads
-    print(f"Found {len(to_keep['fwd']):,} forward reads to keep")
-    print(f"Found {len(to_keep['rev']):,} reverse reads to keep")
-    to_keep = to_keep['fwd'] & to_keep['rev']
-    print(f"Omitting {len(multiples):,} reads which were aligned multiple times")
-    to_keep = to_keep - multiples
+    to_keep = to_keep['fwd'].intersection(to_keep['rev'])
 
-    print(f"Keeping {len(to_keep):,} read pairs from {bam_fp}")
-    print(f"Omitting {len(inconsistent_ix):,} alignments with inconsistent positions")
-    return to_keep, inconsistent_ix
+    # Combine the inconsistent and multiply-aligning reads and omit them all
+    to_omit = inconsistent.union(multiples)
+    print(f"Omitting {len(to_omit):,} read pairs overall")
+
+    # Remove the inconsistent and multiple reads from the to_keep sets
+    to_keep = to_keep - to_omit
+    print(f"Found {len(to_keep):,} read pairs to keep")
+
+    return to_keep, to_omit
 
 
-def filter_bam(keep_reads, input_bam, output_bam, inconsistent_ix):
+def tally_read(read, to_keep, multiples, inconsistent, seen):
+    """Add the read to the appropriate set based on its expected and observed position."""
+
+    # Parse the barcode, chromosome, and position from the read header
+    # Note that positions in the family ID are 1-indexed
+    _, cname, fwd_pos, rev_pos = read.query_name.split("-")
+
+    # Convert the family position information to 0-index, to conform
+    # with how PySam parses the BAM file
+    fwd_pos = int(fwd_pos) - 1
+    rev_pos = int(rev_pos) - 1
+
+    # Set up the key used to reference the dictionaries used to keep track of reads
+    key = "rev" if read.is_reverse else "fwd"
+
+    # If this read has been seen before
+    if read.query_name in seen[key]:
+
+        # Mark it as a multiple-aligner
+        multiples.add(read.query_name)
+        return
+
+    # Mark this read as seen
+    seen[key].add(read.query_name)
+
+    # If the chromosome does not match the expectation
+    if read.reference_name != cname:
+
+        # Mark the read as inconsistent
+        inconsistent.add(read.query_name)
+        return
+
+    # Calculate the offset from the expected position
+
+    # If the read is in the reverse direction
+    if read.is_reverse:
+
+        # Compare the end of the alignment to the end of the family
+        offset = abs(read.reference_end - rev_pos)
+
+    # If the read is in the forward direction
+    else:
+
+        # If the start of the alignment matches the expectation
+        offset = abs(read.reference_start - fwd_pos)
+
+    # If the offset is below the threshold
+    if offset <= max_realign_offset:
+
+        # Add it to the set to keep
+        to_keep[key].add(read.query_name)
+    
+    # Otherwise, if the offset is above the threshold
+    else:
+
+        # Add it to the set of inconsistent reads
+        inconsistent.add(read.query_name)
+
+
+def filter_bam(keep_reads, input_bam, output_bam):
     """Filter the input BAM to a set of reads."""
 
     print(f"Preparing to write {len(keep_reads):,} read pairs from {input_bam} to {output_bam}")
@@ -187,7 +205,7 @@ def filter_bam(keep_reads, input_bam, output_bam, inconsistent_ix):
 
                 # If the read is part of the set
                 # and this position has not been masked due to inconsistent position
-                if read.query_name in keep_reads and i not in inconsistent_ix:
+                if read.query_name in keep_reads:
 
                     # Write it out
                     bam_o.write(read)
@@ -219,21 +237,51 @@ ssc_stats = combine_ssc_stats()
 
 # Get the set of families whose coordinates have stayed the same
 # for each strand independently
-keep_families_pos, inconsistent_pos = find_consistent_families(input_pos_bam)
-keep_families_neg, inconsistent_neg = find_consistent_families(input_neg_bam)
+keep_families_pos, omit_families_pos = find_consistent_families(input_pos_bam)
+keep_families_neg, omit_families_neg = find_consistent_families(input_neg_bam)
 
-# Find the intersection, families which are consistent on both strands
-keep_families = keep_families_pos & keep_families_neg
-print(f"Keeping {len(keep_families):,} reads from both strands")
+# Combine the set of reads which were omitted on either strand
+to_omit = omit_families_pos.union(omit_families_neg)
 
-# Filter the final outputs to just that set of families
-filter_bam(keep_families, input_pos_bam, "POS.SSC.bam", inconsistent_pos)
-filter_bam(keep_families, input_neg_bam, "NEG.SSC.bam", inconsistent_neg)
+# Filter the final outputs to just those families which are consistent on one
+# strand and not-inconsistent on the other (to allow us to keep families which
+# only align to one of the two strands)
+keep_families_pos = keep_families_pos - to_omit
+keep_families_neg = keep_families_neg - to_omit
+
+filter_bam(keep_families_pos, input_pos_bam, "POS.SSC.bam")
+filter_bam(keep_families_neg, input_neg_bam, "NEG.SSC.bam")
+
+# Get the list of families to keep in the CSV
+keep_families = keep_families_pos.union(keep_families_neg)
+print(f"Filtering the CSV down to a set of {len(keep_families):,} families")
 
 # Filter the SSC statistics and write out in CSV format
-ssc_stats = ssc_stats.loc[
-    ssc_stats.family.isin(keep_families)
-]
+ssc_stats = ssc_stats.assign(
+    to_keep = ssc_stats.family.isin(
+        keep_families
+    )
+).query(
+    "to_keep"
+).drop(
+    columns=["to_keep"]
+)
+print(f"After filtering, the CSV contains {ssc_stats.shape[0]:,} families")
+
+# Make sure that the table contains the expected number of rows
+assert len(keep_families) == ssc_stats.shape[0]
+
+# Split up the family label into its components: barcode, refname, start_pos, end_pos
+ssc_stats = pd.concat(
+    [
+        ssc_stats,
+        ssc_stats.family.apply(
+            lambda family_id: pd.Series(dict(zip(['barcode', 'refname', 'start_pos', 'end_pos'], family_id.split("-"))))
+        )
+    ],
+    axis=1
+)
+
 print(f"Writing out to {stats_output_fp}")
 ssc_stats.to_csv(stats_output_fp, index=None)
 print("DONE")
