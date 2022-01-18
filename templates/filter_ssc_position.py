@@ -252,24 +252,41 @@ keep_families_neg = keep_families_neg - to_omit
 filter_bam(keep_families_pos, input_pos_bam, "POS.SSC.bam")
 filter_bam(keep_families_neg, input_neg_bam, "NEG.SSC.bam")
 
-# Get the list of families to keep in the CSV
-keep_families = keep_families_pos.union(keep_families_neg)
-print(f"Filtering the CSV down to a set of {len(keep_families):,} families")
+# If the reads from one strand did not pass the realignment filter, then
+# we need to update the ssc_stats table accordingly
+
+ssc_stats.loc[
+    # Filter to those families which did not pass the positive filter
+    ~ssc_stats.family.isin(
+        keep_families_pos
+    ),
+    # Update the fields for the positive strand
+    [
+        "R1-fwd-n", "R1-fwd-len", "R2-rev-n", "R2-rev-len"
+    ]
+# Set those values to 0
+] = 0
+
+ssc_stats.loc[
+    # Filter to those families which did not pass the negative filter
+    ~ssc_stats.family.isin(
+        keep_families_neg
+    ),
+    # Update the fields for the negative strand
+    [
+        "R2-fwd-n", "R2-fwd-len", "R1-rev-n", "R1-rev-len"
+    ]
+# Set those values to 0
+] = 0
 
 # Filter the SSC statistics and write out in CSV format
-ssc_stats = ssc_stats.assign(
-    to_keep = ssc_stats.family.isin(
-        keep_families
-    )
-).query(
-    "to_keep"
-).drop(
-    columns=["to_keep"]
+ssc_stats = ssc_stats.query(
+    "`R1-fwd-n` > 0 or `R2-fwd-n` > 0"
 )
 print(f"After filtering, the CSV contains {ssc_stats.shape[0]:,} families")
 
 # Make sure that the table contains the expected number of rows
-assert len(keep_families) == ssc_stats.shape[0]
+assert len(keep_families_pos | keep_families_neg) == ssc_stats.shape[0]
 
 # Split up the family label into its components: barcode, refname, start_pos, end_pos
 ssc_stats = pd.concat(
