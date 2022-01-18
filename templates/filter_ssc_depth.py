@@ -43,13 +43,9 @@ def filter_sscs(ssc_stats, min_reads):
 
     keep_reads = set(
         ssc_stats.query(
-            f"`R1-fwd-n` >= {min_reads}"
+            f"nreads_pos >= {min_reads}"
         ).query(
-            f"`R2-fwd-n` >= {min_reads}"
-        ).query(
-            f"`R1-rev-n` >= {min_reads}"
-        ).query(
-            f"`R2-rev-n` >= {min_reads}"
+            f"nreads_neg >= {min_reads}"
         )['family'].tolist()
     )
 
