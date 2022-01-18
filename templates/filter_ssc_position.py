@@ -299,6 +299,25 @@ ssc_stats = pd.concat(
     axis=1
 )
 
+# Change the column names to more informatively refer to the positive
+# and negative strands
+ssc_stats = ssc_stats.rename(
+    columns={
+        "R1-fwd-n": "nreads_pos",
+        "R1-fwd-len": "rlen_fwd",
+        "R2-fwd-n": "nreads_neg",
+        "R1-rev-len": "rlen_rev"
+    }
+).drop(
+    columns=[
+        f"{R}-{d}-{m}"
+        for R in ['R1', 'R2']
+        for d in ['fwd', 'rev']
+        for m in ['n', 'len']
+    ],
+    errors='ignore'
+)
+
 print(f"Writing out to {stats_output_fp}")
 ssc_stats.to_csv(stats_output_fp, index=None)
 print("DONE")
