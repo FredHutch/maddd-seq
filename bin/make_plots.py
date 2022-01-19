@@ -2,12 +2,14 @@
 
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import pandas as pd
 import seaborn as sns
 
 # This folder contains a set of many CSV files with the following file name syntax
 # {specimen}.SSC.csv.gz
+# {specimen}.unfiltered.SSC.details.csv.gz
 # {specimen}.by_read_position.csv.gz
 # {specimen}.by_chr.csv.gz
 # {specimen}.snps_by_base.csv.gz
@@ -55,24 +57,52 @@ def read_files(suffix, melt=False):
 def plot_distribution(
     df,
     col_name,
-    y=None,
     pdf=None,
-    kind='kde',
     hue='specimen',
     title=None,
     xlabel=None,
     ylabel=None,
+    logx=False,
+    logy=False,
 ):
 
     # Try to make the plot
     try:
-        sns.displot(data=df, x=col_name, y=y, hue=hue, kind=kind)
-        annotate_and_save(xlabel=xlabel, ylabel=ylabel, pdf=pdf, title=title)
+        
+        # Get the counts per bin
+        plot_df = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "Count": hue_df.groupby(col_name).apply(len)
+                    }
+                ).reset_index(
+                ).assign(
+                    **{hue: hue_key}
+                )
+                for hue_key, hue_df in df.groupby(hue)
+            ]
+        )
+        
+        sns.lineplot(
+            data=plot_df,
+            x=col_name,
+            y="Count",
+            hue=hue
+        )
+        annotate_and_save(
+            xlabel=xlabel,
+            ylabel=ylabel,
+            pdf=pdf,
+            title=title,
+            logx=logx,
+            logy=logy,
+        )
 
     # If there is an index error, then the underlying data may not have
     # had enough variation to plot the distribution
     except IndexError:
-        print(f"Could not make plot: x='{col_name}', y='{y}', hue='{hue}', title='{title}'")
+        print(f"Could not make plot: x='{col_name}', hue='{hue}', title='{title}'")
 
 
 def plot_lines(
@@ -183,7 +213,7 @@ def plot_ssc_summary(pdf):
         df,
         "rlen_fwd",
         pdf=pdf,
-        title="Single Read Length Distribution",
+        title="Read Length Distribution",
         xlabel="Length of Sequence Reads"
     )
 
@@ -193,37 +223,37 @@ def plot_ssc_summary(pdf):
         "nreads_dsc",
         pdf=pdf,
         title="DSC Sequencing Depth",
-        xlabel="Number of reads per DSC"
+        xlabel="Number of reads per DSC",
+        logx=True
     )
     
-# Barcode saturation - number of reads per barcode
-# {specimen}.corrected_barcodes.csv
-def plot_barcode_counts(pdf):
+# Number of reads per family
+# {specimen}.unfiltered.SSC.details.csv.gz
+def plot_unfiltered_families(pdf, suffix='.unfiltered.SSC.details.csv.gz'):
 
     # Read the table
-    df = read_files('.corrected_barcodes.csv')
+    df = read_files(suffix)
 
     # If there is no data
     if df is None:
 
         # Do not make any plot
+        print(f"No files found with extension: {suffix}")
         return
 
-    # Plot the number of reads per barcode, per specimen
-    sns.lineplot(
-        data=df,
-        x='nreads',
-        y='nbarcodes',
-        hue='specimen'
-    )
-    annotate_and_save(
-        xlabel="Number of reads per barcode",
-        ylabel="Number of barcodes",
-        title="Barcode Saturation",
+    # Calculate the total number of reads per family
+    df = df.assign(total_reads = df.nreads_pos + df.nreads_neg)
+
+    # Plot the distribution of sequencing depth per specimen
+    plot_distribution(
+        df,
+        "total_reads",
         pdf=pdf,
-        logx=True,
-        logy=True
+        title="Unfiltered reads per family",
+        xlabel="Number of reads per family",
+        logx=True
     )
+
 
 # Summary of mutations by read position
 # {specimen}.by_read_position.csv.gz
@@ -231,6 +261,8 @@ def plot_read_position(pdf):
     
     # Read the table
     df = read_files('.by_read_position.csv.gz')
+
+    print(df)
 
     # If there is no data
     if df is None:
@@ -240,18 +272,8 @@ def plot_read_position(pdf):
 
     # Calculate the proportion of SNPs and adducts
     df = df.assign(
-        snp_prop=df.snps / df.nreads,
-        adduct_prop=df.adducts / df.nreads,
-    )
-
-    plot_lines(
-        df,
-        'pos',
-        'nreads',
-        pdf=pdf,
-        xlabel="Position in Read",
-        ylabel="Number of Reads",
-        title="Sequencing Depth"
+        snp_prop=df.snps / df.snps.sum(),
+        adduct_prop=df.adducts / df.adducts.sum(),
     )
 
     plot_lines(
@@ -260,7 +282,7 @@ def plot_read_position(pdf):
         'snp_prop',
         pdf=pdf,
         xlabel="Position in Read",
-        ylabel="SNP Proportion",
+        ylabel="# of SNPs at position / total # of SNPs",
         title="SNP Rate by Read Position"
     )
 
@@ -270,7 +292,7 @@ def plot_read_position(pdf):
         'adduct_prop',
         pdf=pdf,
         xlabel="Position in Read",
-        ylabel="Adduct Proportion",
+        ylabel="# of adducts at position / total # of adducts",
         title="Adduct Rate by Read Position"
     )
 
@@ -371,14 +393,14 @@ def collapse_complementary_changes(df):
         'base_pair_change'
     ).sum()
 
-def read_specimen_summary(suffix='.SSC.csv.gz'):
+def read_specimen_summary(suffix='.SSC.csv.gz', exclude_suffix='.unfiltered.SSC.csv.gz'):
     """Parse the SSC summary tables to get summary metrics."""
 
     # Get the list of files with the suffix
     fp_list = [
         fp
         for fp in os.listdir('.')
-        if fp.endswith(suffix)
+        if fp.endswith(suffix) and not fp.endswith(exclude_suffix)
     ]
 
     # If there are no files with the suffix
@@ -429,8 +451,8 @@ if specimen_summary is not None:
 # Open up a PDF for plotting
 with PdfPages("report.pdf") as pdf:
 
-    # Plot the barcode saturation
-    plot_barcode_counts(pdf)
+    # Plot the number of reads per family
+    plot_unfiltered_families(pdf)
 
     # Plot a summary of SSC metrics
     plot_ssc_summary(pdf)

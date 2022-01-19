@@ -301,6 +301,11 @@ workflow variants_wf{
             .mix(
                 barcode_counts
             )
+            .mix(
+                bam_ch.map {
+                    it -> it[3]
+                }
+            )
             .toSortedList()
     )
 

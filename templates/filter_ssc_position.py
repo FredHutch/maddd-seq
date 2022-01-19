@@ -17,7 +17,7 @@ input_neg_bam = "realigned.NEG.SSC.bam"
 assert os.path.exists(input_neg_bam)
 
 # Output filepath for SSC details
-stats_output_fp = "SSC.details.csv.gz"
+stats_output_fp = "${specimen}.unfiltered.SSC.details.csv.gz"
 print(f"Writing out to {stats_output_fp}")
 
 # Maximum offset following realignment
