@@ -42,6 +42,7 @@ process index_ssc {
 process parse_ssc {
     container "${params.container__pandas}"
     publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*adduct.gtf"
     label "io_limited"
     
     input:
@@ -53,6 +54,7 @@ process parse_ssc {
     path "summary.json.gz"
     path "*.csv.gz", emit: csv
     tuple val(specimen), path("${specimen}.adduct.families.txt.gz"), emit: adduct_families
+    path "${specimen}.adduct.gtf"
 
     script:
     template 'parse_ssc.sh'
