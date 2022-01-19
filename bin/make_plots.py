@@ -301,7 +301,9 @@ def plot_heatmap(
     )
 
     # Format the base change as a string
-    df = df.assign(
+    df = df.query(
+        "base != variable"
+    ).assign(
         base_change=df.apply(
             lambda r: f"{r['base']} -> {r['variable']}",
             axis=1
