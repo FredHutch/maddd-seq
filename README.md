@@ -37,11 +37,9 @@ The steps of this analysis workflow are:
 1. Perform quality trimming and QC of the input whole-genome shotgun sequence (WGS) data
 2. Trim barcodes from the ends of WGS reads and tag each pair with the concatenated barcode
 3. Trim an additional N bases from the beginning of each read to reduce errors introduced by overhang filling
-4. Align the barcode-trimmed reads to the reference genome
-5. Group together sequences which share the same barcode and which are aligned to the same position into 'families'
-6. Infer the Single-Strand Consensus (SSC) from each family of input data
-7. Compare the SSC sequences from each strand to generate the double-strand consensus (DSC) sequence
-8. Summarize the number and position of DNA variants and adducts detected
+4. Align the barcode-trimmed reads to the reference genome and trim any 3' bases which overhang the paired end
+5. Infer the Single-Strand Consensus (SSC) from each family of input data which share the same barcode and which are aligned to the same position
+6. Filter SSC data by sequencing depth and combine to generate the double-strand consensus (DSC) sequence, yielding the DNA variants and adducts detected
 
 The options available for this analysis are:
 
@@ -54,72 +52,107 @@ The options available for this analysis are:
 - A set of genomic regions used for target capture (used to limit the regions of analysis in 4)
 - The maximum distance between the alignment start position of reads grouped together in (5)
 - Minimum number of reads per SSC used in analysis after (6)
-- An optional set of genomic coordinates to omit while detecting SNPs and adducts in (8)
+- An optional set of genomic coordinates to omit while detecting SNPs and adducts in (6)
 
 ## Outputs
 
 ```
-1_input_data/input/multiqc_report.html
-Summary of sequence quality for input data
-
-1_input_data/quality_trimmed/multiqc_report.html
-Summary of sequence quality after trimming by quality score
-
-2_barcode_trimmed/{specimen}/barcode_counts.csv.gz
-Summary of the number of reads from each specimen with each uncorrected barcode
-
-2_barcode_trimmed/{specimen}/barcode_corrections.csv.gz
-Summary of the number of reads from each specimen with each corrected barcode
-(after barcode error correction)
-
-2_barcode_trimmed/{specimen}/{specimen}.barcodes.pdf
-Figure displaying the distribution of the number of reads sequenced per barcode
-
-2_barcode_trimmed/multiqc_report.html
-Summary of sequence quality after trimming barcodes
-
-3_end_trimmed/multiqc_report.html
-Summary of sequence quality after trimming additional bases from the 5' end of each read
-
-4_aligned/multiqc_report.html
-Summary of the overall number of reads aligned per specimen
-
-4_aligned/{specimen}/{specimen}.flagstats
-Summary of the number of reads aligned per contig per specimen
-
-6_all_SSC/<specimen>/[NEG|POS].SSC.bam[.bai]
-Aligned SSCs (unfiltered by number of reads) per specimen, both positive and negative strands
-
-6_all_SSC/<specimen>/SSC.details.csv.gz
-For each SSC (unfiltered by number of reads) in a specimen, details including the number of reads
-
-7_filtered_SSC/<specimen>/alignments/DSC.bam[.bai]
-Aligned DSCs per specimen, after filtering by the minimum number of reads per SSC
-
-7_filtered_SSC/<specimen>/alignments/[POS|NEG].SSC.bam[.bai]
-Aligned SSCs per specimen, after filtering by the minimum number of reads per SSC
-
-7_filtered_SSC/<specimen>/alignments/DSC.vcf.gz
-Tabular summary of variant positions detected per specimen
-
-7_filtered_SSC/<specimen>/stats/{specimen}.snps_by_base.csv.gz
-Number of SNPs detected as a function of what bases were changed (e.g. A -> C)
-
-7_filtered_SSC/<specimen>/stats/{specimen}.adducts_by_base.csv.gz
-Number of adducts detected as a function of what bases were changed (e.g. A -> C)
-
-7_filtered_SSC/<specimen>/stats/{specimen}.by_chr.csv.gz
-Number of SNPs and adducts detected per chromosome (contig)
-
-7_filtered_SSC/<specimen>/stats/{specimen}.by_read_position.csv.gz
-Number of SNPs and adducts detected as a function of the position along the read
-
-7_filtered_SSC/<specimen>/stats/{specimen}.SSC.csv.gz
-Tabular summary of all filtered SSCs, including SNPs, adducts, and read length
-
-7_filtered_SSC/plots/DSC.summary.pdf
-Visual summary of various metrics summarizing the filtered DSCs
-
-7_filtered_SSC/plots/DSC.summary.pdf
-Visual summary of the distribution of SNPs and adducts as a function of position along the read
+├── 1_input_data
+│   ├── input
+│   │   |   # Summary of sequence quality for input data
+│   │   └── multiqc_report.html
+│   └── quality_trimmed
+│       ├── <SPECIMEN>
+│       │   |   # Quality trimmed reads
+│       │   ├── <SPECIMEN>_R1_001.trimmed.fastq.gz
+│       │   └── <SPECIMEN>_R2_001.trimmed.fastq.gz
+│       │   # Summary of sequence quality after trimming by quality score
+│       └── multiqc_report.html
+├── 2_barcode_trimmed
+│   ├── <SPECIMEN>
+│   │   |   # Visual summary of the number of barcodes pre- and post-trimming
+│   │   ├── <SPECIMEN>.barcodes.pdf
+│   │   |   # Summary of the number of reads from each specimen with each corrected barcode
+│   │   ├── barcode_corrections.csv.gz
+│   │   |   # Summary of the number of reads from each specimen with each uncorrected barcode
+│   │   └── barcode_counts.csv.gz
+│   │   # Summary of sequence quality after trimming barcodes
+│   └── multiqc_report.html
+├── 3_end_trimmed
+│   ├── <SPECIMEN>
+│   │   |   # End-trimmed reads
+│   │   ├── <SPECIMEN>_R1_001.trimmed.clipped.trimmed.fastq.gz
+│   │   └── <SPECIMEN>_R2_001.trimmed.clipped.trimmed.fastq.gz
+│   |   # Summary of sequence quality after 5' fixed-length end-trimming
+│   └── multiqc_report.html
+├── 4_aligned
+│   |   # Summary of the overall number of reads aligned per specimen
+│   ├── multiqc_report.html
+│   ├── reads
+│   │   |   # Aligned reads
+│   │   ├── <SPECIMEN>.aligned.bam
+│   │   ├── <SPECIMEN>.aligned.bam.bai
+│   │   └── <SPECIMEN>.aligned.bam.csi
+│   └── trim_overhang
+│       └── <SPECIMEN>
+│           |   # Overhang-trimmed reads
+│           ├── <SPECIMEN>_R1.fastq.gz
+│           └── <SPECIMEN>_R2.fastq.gz
+├── 5_all_SSC
+│   └── <SPECIMEN>
+│       |   # Summary metrics for every family of reads
+│       ├── <SPECIMEN>.unfiltered.SSC.details.csv.gz
+│       |   # Aligned SSCs, negative strand
+│       ├── NEG.SSC.bam
+│       ├── NEG.SSC.bam.bai
+│       |   # Aligned SSCs, positive strand
+│       ├── POS.SSC.bam
+│       └── POS.SSC.bam.bai
+└── 6_filtered_SSC
+    ├── <SPECIMEN>
+    │   |   # Location of mutations and the depth of coverage at each position
+    │   ├── DSC.tsv.gz
+    │   ├── alignments
+    │   │   |   # Aligned DSC data (BAM format, per read)
+    │   │   ├── DSC.bam
+    │   │   ├── DSC.bam.bai
+    │   │   |   # Aligned DSC data (PILEUP format, per position)
+    │   │   ├── DSC.pileup.gz
+    │   │   |   # Tabular summary of variant positions detected per specimen
+    │   │   ├── DSC.vcf.gz
+    │   │   |   # Alignments of SSC data after filtering by minimum read number
+    │   │   ├── NEG.SSC.bam
+    │   │   ├── NEG.SSC.bam.bai
+    │   │   ├── POS.SSC.bam
+    │   │   └── POS.SSC.bam.bai
+    │   └── stats
+    │       |   # Location of mutations and the depth of coverage at each position
+    │       ├── <SPECIMEN>.DSC.tsv.gz
+    │       |   # Position, read length, and number of reads per filtered SSC
+    │       ├── <SPECIMEN>.SSC.csv.gz
+    │       |   # Adduct data with position and strand-specific mismatch information
+    │       ├── <SPECIMEN>.adduct.gtf
+    │       |   # Number of adducts detected as a function of what bases were changed (e.g. A -> C)
+    │       ├── <SPECIMEN>.adducts_by_base.csv.gz
+    │       |   # Number of SNPs and adducts detected per chromosome (contig)
+    │       ├── <SPECIMEN>.by_chr.csv.gz
+    │       |   # Number of SNPs and adducts detected as a function of the position along the read
+    │       ├── <SPECIMEN>.by_read_position.csv.gz
+    │       |   # Number of SNPs detected as a function of what bases were changed (e.g. A -> C)
+    │       └── <SPECIMEN>.snps_by_base.csv.gz
+    ├── plots
+    │   |   # Collection of figures summarizing SNP and adduct rates across all specimens
+    │   └── report.pdf
+    ├── reads
+    │   |   # Aligned reads from DSCs containing adducts
+    │   ├── <SPECIMEN>.adduct.reads.bam
+    │   ├── <SPECIMEN>.adduct.reads.bam.bai
+    │   └── <SPECIMEN>.adduct.reads.bam.csi
+    └── tables
+        |   # Tabular summary of the number of adducts per specimen
+        ├── adducts_by_base.csv
+        |   # Tabular summary of the number of SNPs per specimen
+        ├── snps_by_base.csv
+        |   # Tabular summary of the SNP and adduct rate per specimen
+        └── summary.csv
 ```
