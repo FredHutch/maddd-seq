@@ -316,6 +316,8 @@ ssc_stats = ssc_stats.rename(
         for m in ['n', 'len']
     ],
     errors='ignore'
+).sort_values(
+    by=["refname", "start_pos", "end_pos"]
 )
 
 print(f"Writing out to {stats_output_fp}")
