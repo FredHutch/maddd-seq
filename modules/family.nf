@@ -95,7 +95,7 @@ process filter_ssc_position {
 // Sort and index the SSC BAM files
 process sort_ssc_bam {
     container "${params.container__bwa}"
-    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.SSC.ba*"
     label "mem_medium"
     
     input:

@@ -262,8 +262,6 @@ def plot_read_position(pdf):
     # Read the table
     df = read_files('.by_read_position.csv.gz')
 
-    print(df)
-
     # If there is no data
     if df is None:
 
