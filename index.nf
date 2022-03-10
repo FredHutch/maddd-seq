@@ -8,8 +8,8 @@ params.help = false
 params.genome_fasta = false
 params.output = false
 
-// If specified, do not run RepeatMasker on the genome before indexing
-params.skip_repeatmasker = false
+// If specified, run RepeatMasker on the genome before indexing
+params.repeatmasker = false
 params.repeatmasker_species = 'human'
 
 // If specified, publish the intermediate result files
@@ -64,20 +64,20 @@ workflow {
         exit 1
     }
 
-    // If the user requested --skip_repeatmasker
-    if ( params.skip_repeatmasker ){
-
-        // Index the masked genome
-        bwa_index(file(params.genome_fasta))
-
-    // Otherwise, run RepeatMasker
-    } else {
+    // If the user requested --repeatmasker
+    if ( params.repeatmasker ){
 
         // Run RepeatMasker on the genome FASTA
         repeatmasker(file(params.genome_fasta))
 
         // Index the input
         bwa_index(repeatmasker.out)
+
+    // Otherwise, run RepeatMasker
+    } else {
+
+        // Index the masked genome
+        bwa_index(file(params.genome_fasta))
 
     }
 
