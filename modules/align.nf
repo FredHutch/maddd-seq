@@ -48,24 +48,6 @@ process shard_reads {
 
 }
 
-// Filter all alignments to those which overlap a target region
-process filter_target_regions {
-    container "${params.container__bwa}"
-    publishDir "${params.output}/4_aligned/filter_target_regions_intermediate/", mode: 'copy', enabled: params.save_intermediates
-    label "cpu_medium"
-    
-    input:
-    tuple val(specimen), val(shard_ix), path("unmasked.bam")
-    path target_regions_bed
-
-    output:
-    tuple val(specimen), val(shard_ix), path("aligned.bam"), emit: bam
-
-    script:
-    template 'filter_target_regions.sh'
-
-}
-
 // Trim the reads so that they do not overhang the end of the fragment
 process trim_overhang {
     container "${params.container__pandas}"
@@ -156,7 +138,6 @@ workflow align_wf{
     reads_ch
     ref
     barcodes_csv_ch
-    target_regions_bed_path
 
     main:
 
@@ -190,26 +171,9 @@ workflow align_wf{
     // Align all of the reads
     align_bwa(shard_reads.out, ref)
 
-    // If the user specified a --target_regions_bed
-    if ( target_regions_bed_path ){
-
-        // Get that file
-        target_regions_bed = file(target_regions_bed_path)
-
-        // Only keep alignments which overlap this region
-        filter_target_regions(
-            align_bwa.out.bam,
-            target_regions_bed
-        )
-
-        bam_ch = filter_target_regions.out.bam
-    } else{
-        bam_ch = align_bwa.out.bam
-    }
-
     // Extract the positions of each aligned read to enable the trim_overhang method below
     extract_positions(
-        bam_ch
+        align_bwa.out.bam
     )
 
     // Merge together the position information CSV with the BAM, using the first two

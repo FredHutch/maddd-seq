@@ -79,7 +79,7 @@ process align_ssc {
 process filter_ssc_position {
     container "${params.container__pandas}"
     publishDir "${params.output}/5_all_SSC/${specimen}/", mode: 'copy', overwrite: true, pattern: "*.csv.gz"
-    label "mem_medium"
+    label "mem_verylarge"
     
     input:
     tuple val(specimen), path("realigned.POS.SSC.bam"), path("realigned.NEG.SSC.bam"), path("SSC_STATS/*.csv.gz")

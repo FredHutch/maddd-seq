@@ -5,62 +5,6 @@ def jsonSlurper = new JsonSlurper()
 // Using DSL-2
 nextflow.enable.dsl=2
 
-// Set default parameters
-params.help = false
-params.sample_sheet = false
-params.fastq_folder = false
-params.fastq_suffix = ".fastq.gz"
-params.output = false
-params.genome = false
-params.genome_json = false
-params.genome_key = false
-params.barcodes = false
-params.save_intermediates= false
-
-// Quality trimming
-params.min_qvalue = 20
-params.min_align_score = 40
-params.RD1_ADAPTER_3P = "GATCGGAAGAGCACACGTCTGAACTCCAGTC"
-params.RD2_ADAPTER_3P = "GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
-
-// Unique molecular tags
-params.barcode_length = 6
-params.barcode_max_homopolymer = 6
-params.max_barcode_mismatch = 2
-
-// Trim a fixed amount from the 5' of both reads
-params.trim_length = 5
-
-// Split up each specimen into shards for parallel processing
-params.n_shards = 100
-
-// Minimum proportion of bases needed to call an SSC base
-params.min_base_prop = 0.7
-
-// Maximum distance that an SSC may change position after realignment
-params.max_realign_offset = 5
-
-// Minimum number of reads needed for EACH SSC to keep a DSC
-// Note that we will keep a DSC from either end of a molecule,
-// even if the other end doesn't have enough data to use
-params.min_reads = 3
-
-// If specified, mask everything outside of a user-provided target region (BED file)
-params.target_regions_bed = false
-
-// If specified, a CSV file containing the set of coordinates which
-// should be ignored during mutation/variant calling
-params.ignore_coordinates = false
-
-// Set the containers to use for each component
-params.container__cutadapt = "quay.io/biocontainers/cutadapt:3.5--py36hc5360cc_0"
-params.container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--hdfd78af_1"
-params.container__multiqc = "quay.io/biocontainers/multiqc:1.11--pyhdfd78af_0"
-params.container__pandas = "quay.io/fhcrc-microbiome/python-pandas:0fd1e29"
-params.container__python_plotting = "quay.io/hdc-workflows/python-plotting:b50a842"
-params.container__bwa = "quay.io/hdc-workflows/bwa-samtools:93deeda"
-params.container__bcftools = "quay.io/biocontainers/bcftools:1.13--h3a49de5_0"
-
 // Import sub-workflows
 include { manifest_wf } from './modules/manifest'
 include { quality_wf } from './modules/quality'
@@ -91,10 +35,9 @@ Required Arguments:
   --output              Folder to write output files to
   --barcodes            Path to text file containing the barcode whitelist
 
-  --genome              Reference genome indexed for alignment by BWA.
-  -or-
-  --genome_json         JSON encoded dict mapping keys to `genome` (required) and `target_regions_bed` (optional).
-  --genome_key          Key corresponding to entry in `genome_json`
+  --genome              Reference genome indexed for alignment by BWA
+                        Note that all required alignment index files must be present
+                        in the same path with the appropriate suffixes appended
 
 Optional Arguments:
   --min_qvalue          Minimum quality score used to trim data (default: ${params.min_qvalue})
@@ -153,7 +96,7 @@ workflow {
 
     // Show help message if the user specifies the --help flag at runtime
     // or if --genome and --output are not provided
-    if ( params.help || params.output == false ){
+    if ( params.help || params.output == false || params.genome == false ){
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
@@ -176,71 +119,6 @@ workflow {
         View help text with --help for more details.
         """.stripIndent()
         exit 1
-    }
-
-    // Check on the combinations of genome parameter inputs
-    // If both --genome and --genome_json are provided
-    if ( params.genome && params.genome_json ){
-        log.info"""
-        ERROR: Must provide only one of --genome or --genome_json, not both.
-        View help text with --help for more details.
-        """.stripIndent()
-        exit 1
-    }
-
-    // If neither --genome and --genome_json are provided
-    if ( !params.genome && !params.genome_json ){
-        log.info"""
-        ERROR: Must provide either --genome or --genome_json
-        View help text with --help for more details.
-        """.stripIndent()
-        exit 1
-    }
-
-    // If --genome_json is provided but not --genome_key
-    if ( params.genome_json && !params.genome_key ){
-        log.info"""
-        ERROR: Must provide --genome_key when using --genome_json
-        View help text with --help for more details.
-        """.stripIndent()
-        exit 1
-    }
-
-    // If the file specified by --genome_json does not exist
-    if ( params.genome_json && !file(params.genome_json).exists() ) {
-        log.info"""
-        ERROR: --genome_json file ${params.genome_json} does not exist
-        """.stripIndent()
-        exit 1
-    }
-
-    // We parse either --genome_json or --genome to set
-    // the params.genome_path and target_regions_bed_path variables
-    // The '_path' variables are used in all modules/calls below.
-    // If the user provided a genome json mapping
-    if ( params.genome_json ) {
-        // Get the genome_map as an NF map from the JSON dict
-        genome_map = new JsonSlurper().parseText( file(params.genome_json).text )
-        if ( ! genome_map["${params.genome_key}"] ) {
-            log.info"""
-            ERROR: --genome_key ${params.genome_key} does not exist in --genome_json ${params.genome_json}
-            """.stripIndent()
-            exit 1
-        }
-        params.genome_path = genome_map["${params.genome_key}"]['genome']
-
-        // Use the genome json map's target region bed only
-        // if the parameter was not passed in
-        if ( !params.target_regions_bed ) {
-            target_regions_bed_path = genome_map["${params.genome_key}"]['target_regions_bed']
-        } else {
-            // use the target_regions_bed param if it was passed in
-            target_regions_bed_path = params.target_regions_bed
-        }
-    } else {
-        // If the user provided a genome via --genome
-        params.genome_path = params.genome
-        target_regions_bed_path = params.target_regions_bed
     }
 
     // If the user provided a sample sheet
@@ -310,7 +188,7 @@ workflow {
 
     // The pre-compiled genome reference is provided as an input
     // It must contain a wildcard capturing all required index files
-    genome_ref = Channel.fromPath("${params.genome_path}").toSortedList()
+    genome_ref = Channel.fromPath("${params.genome}*").toSortedList()
 
     // Align the barcode-clipped reads to the reference genome
     align_wf(
@@ -319,9 +197,7 @@ workflow {
         // Reference genome, indexed for alignment with BWA
         genome_ref,
         // Table linking each uncorrected barcode to its corrected sequence
-        barcodes_wf.out.csv,
-        // Path to BED file used for filtering to target regions, if any
-        target_regions_bed_path
+        barcodes_wf.out.csv
     )
     // output:
     //   bam:
