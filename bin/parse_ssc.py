@@ -27,18 +27,6 @@ assert os.path.exists(input_pos_bam)
 input_neg_bam = "NEG.SSC.bam"
 assert os.path.exists(input_neg_bam)
 
-# Input filepath for a CSV with a list of coordinates to ignore
-ignore_coordinates_fp = "ignore_coordinates.csv"
-assert os.path.exists(ignore_coordinates_fp)
-print(f"Reading from {ignore_coordinates_fp}")
-ignore_coordinates = pd.read_csv(ignore_coordinates_fp)
-print(f"Read in a set of {ignore_coordinates.shape[0]:,} coordinates to ignore")
-# Make sure that the expected columns are present
-assert 'chr' in ignore_coordinates.columns.values
-assert 'pos' in ignore_coordinates.columns.values
-# Transform the DataFrame to a set of tuples
-ignore_coordinates = set([(str(r.chr), int(r.pos)) for _, r in ignore_coordinates.iterrows()])
-
 # Output path for the total and summarized data
 total_output = "total.json.gz"
 print(f"Output path: {total_output}")
@@ -142,12 +130,6 @@ def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
             # Skip it
             continue
 
-        # If this position is in the ignore list
-        if position_is_ignored(read.reference_name, rpos):
-
-            # Skip it
-            continue
-
         # Otherwise, record the query base in the output
         variants[rpos] = qbase
         # As well as the reference position at that location
@@ -157,16 +139,6 @@ def parse_variants(read, allowed_nucs=set(['A', 'T', 'C', 'G'])):
         variants=variants,
         references=references
     )
-
-
-def position_is_ignored(chr, pos):
-    """
-    Return True if the specified (0-indexed) position should be ignored,
-    by comparing against the list of coordinates provided by the user
-    with --ignore_coordinates_csv (which is 1-indexed).
-    """
-
-    return (str(chr), int(pos + 1)) in ignore_coordinates
 
 
 def parse_bam(bam_fp):

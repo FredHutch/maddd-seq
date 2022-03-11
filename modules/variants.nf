@@ -47,7 +47,6 @@ process parse_ssc {
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
-    path "ignore_coordinates.csv"
 
     output:
     tuple val(specimen), path("total.json.gz"), emit: json
@@ -220,21 +219,6 @@ workflow variants_wf{
             )
     )
 
-    // If the user specified a file with --ignore_coordinates
-    if ( params.ignore_coordinates && params.ignore_coordinates.length() > 1 ) {
-
-        // Then point to that file
-        ignore_coordinates = file(params.ignore_coordinates)
-
-    // Otherwise
-    } else {
-
-        // Point to an empty file with the required format
-        // which is located in the main repository
-        ignore_coordinates = file("$baseDir/assets/ignore_coordinates.csv")
-
-    }
-
     // Parse the SSC data in order to:
     //   - Construct DSCs BAMs which combine both strands
     //   - Call adducts from the SSC data
@@ -243,8 +227,7 @@ workflow variants_wf{
     //   - Summarize the number of adducts and SNPs per chromosome
     //   - Summarize the number of adducts and SNPs per position within each read
     parse_ssc(
-        filter_ssc_depth.out,
-        ignore_coordinates
+        filter_ssc_depth.out
     )
 
     // Format the DSC data as BAM
