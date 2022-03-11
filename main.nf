@@ -99,6 +99,7 @@ workflow {
     if ( params.help || params.output == false || params.genome == false ){
         // Invoke the function above which prints the help message
         helpMessage()
+        log.info"""Make sure to provide parameters 'output' and 'genome'"""
         // Exit out and do not run anything else
         exit 1
     }
