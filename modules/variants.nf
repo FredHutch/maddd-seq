@@ -315,27 +315,6 @@ workflow variants_wf{
             )
     )
 
-    // Make a series of plots across all specimens
-    make_plots(
-        format_ssc_csv
-            .out
-            .mix(
-                parse_ssc
-                    .out
-                    .csv
-                    .flatten()
-            )
-            .mix(
-                barcode_counts
-            )
-            .mix(
-                bam_ch.map {
-                    it -> it[3]
-                }
-            )
-            .toSortedList()
-    )
-
     emit:
     adduct_families = parse_ssc.out.adduct_families
 
