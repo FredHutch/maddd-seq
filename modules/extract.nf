@@ -3,11 +3,6 @@
 // Using DSL-2
 nextflow.enable.dsl=2
 
-include { merge_bam } from './bwa' addParams(
-    subfolder: '6_filtered_SSC/reads',
-    file_label: 'adduct.reads',
-    publish: true
-)
 
 // Extract reads from families which contain adducts
 process adduct_reads {
@@ -15,13 +10,31 @@ process adduct_reads {
     label "mem_medium"
     
     input:
-    tuple val(specimen), val(shard_ix), path(bam), path(read_families), path(adduct_families)
+    tuple val(specimen), val(filtering), path(adduct_families), val(shard_ix), path(bam), path(read_families)
 
     output:
-    tuple val(specimen), path("adduct.reads.bam")
+    tuple val(specimen), val(filtering), path("adduct.reads.bam")
 
     script:
     template 'adduct_reads.sh'
+
+}
+
+
+// Merge a collection of alignments in sorted BAM format
+process merge_adduct_reads_bam {
+    container "${params.container__bwa}"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/${filtering}/", mode: 'copy', overwrite: true
+    label "cpu_medium"
+    
+    input:
+    tuple val(specimen), val(filtering), path("input_bam/*.bam")
+
+    output:
+    path "*"
+
+    script:
+    template 'merge_adduct_reads_bam.sh'
 
 }
 
@@ -34,30 +47,24 @@ workflow extract_wf {
     family_shard_ch
     // tuple val(specimen), val(shard_ix), path("families.csv.gz")
     adduct_family_ch
-    // tuple val(specimen), path(adduct_families)
+    // tuple val(specimen), val(filtering), path(adduct_families)
 
     main:
 
     adduct_family_ch
-        .cross(
+        .combine(
             bam_shard_ch
                 .join(
                     family_shard_ch,
                     by: [0, 1]
-                )
-        )
-        .map {
-            it -> [
-                it[0][0], // specimen
-                it[1][1], // shard_ix
-                it[1][2], // aligned.bam
-                it[1][3], // families.csv.gz
-                it[0][1]  // adduct.families.txt.gz
-            ]
-        } | adduct_reads
+                ),
+            by: 0
+        ) | adduct_reads
 
     // Join the BAM files across all shards
-    merge_bam(
-        adduct_reads.out.groupTuple()
+    merge_adduct_reads_bam(
+        adduct_reads.out.groupTuple(
+            by: [0, 1]
+        )
     )
 }

@@ -315,7 +315,17 @@ workflow variants_wf{
             )
     )
 
+    // Make a channel with the adduct families CSV
+    // for each specimen and each level of filtering
+    adduct_families_ch = parse_ssc
+        .out
+        .adduct_families
+        .transpose()
+        .map {
+            it -> [it[0], it[1].name.replaceAll(".adduct.families.txt.gz", ""), it[1]]
+        }
+
     emit:
-    adduct_families = parse_ssc.out.adduct_families
+    adduct_families = adduct_families_ch 
 
 }

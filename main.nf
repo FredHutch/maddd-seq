@@ -229,14 +229,7 @@ workflow {
         // CSV with the number of reads per barcode, for each specimen
         barcodes_wf.out.counts
     )
-    // publish:
-    //   7_filtered_SSC/<specimen>/POS.SSC.bam[.bai]
-    //   7_filtered_SSC/<specimen>/NEG.SSC.bam[.bai]
-    //   7_filtered_SSC/<specimen>/SSC.details.csv.gz
-    //   8_variants/<specimen>/variants.vcf
-    //   8_variants/<specimen>/adducts.vcf
-    //   8_variants/variant_summary.csv
-
+ 
     // Extract the reads assigned to families which contain adducts
     extract_wf(
         // Channel with the shards of aligned reads per specimen
