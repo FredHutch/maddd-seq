@@ -161,7 +161,7 @@ process format_ssc_csv {
     tuple val(specimen), val(filtering), path("total.json.gz"), path("SSC.details.csv.gz")
 
     output:
-    file "SSC.csv.gz"
+    file "${filtering}.SSC.csv.gz"
 
     script:
     template 'format_ssc_csv.py'
@@ -305,12 +305,13 @@ workflow variants_wf{
             .map {
                 it -> [it[0], it[1].name.replaceAll(".json.gz", ""), it[1]]
             }
-            .join(
+            .combine(
                 filter_ssc_depth
                     .out
                     .map {
                         [it[0], it[3]]
-                    }
+                    },
+                by: 0
             )
     )
 

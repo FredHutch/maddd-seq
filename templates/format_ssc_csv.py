@@ -13,8 +13,8 @@ with gzip.open('total.json.gz', 'rt') as handle:
 merged_len = pd.Series({k: v['nbases'] for k, v in dat.items()})
 # - the number of adducts
 n_adducts = pd.Series({k: len(v['adducts']) for k, v in dat.items()})
-# - the number of mutations
-n_mutations = pd.Series({k: len(v['mutations']) for k, v in dat.items()})
+# - the number of variants
+n_variants = pd.Series({k: len(v['variants']) for k, v in dat.items()})
 
 # Read the table with the number of reads per SSC
 ssc_df = pd.read_csv("SSC.details.csv.gz")
@@ -44,7 +44,7 @@ ssc_df = ssc_df.rename(
 ssc_df = ssc_df.assign(
     merged_len=merged_len,
     n_adducts=n_adducts,
-    n_mutations=n_mutations,
+    n_variants=n_variants,
 ).reset_index()
 
 # Split up the family name into barcode, chromosome, and positions
@@ -60,4 +60,4 @@ ssc_df = pd.concat(
 ).drop(columns='family')
 
 # Save to disk
-ssc_df.to_csv("SSC.csv.gz", index=None)
+ssc_df.to_csv("${filtering}.SSC.csv.gz", index=None)
