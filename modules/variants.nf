@@ -41,19 +41,20 @@ process index_ssc {
 // Parse the SSC data
 process parse_ssc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*csv.gz"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true, pattern: "*adduct.gtf"
-    label "io_limited"
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/", mode: 'copy', overwrite: true
+    label "mem_medium"
     
     input:
     tuple val(specimen), path("POS.SSC.bam"), path("NEG.SSC.bam"), path("SSC.details.csv.gz")
 
     output:
-    tuple val(specimen), path("total.json.gz"), emit: json
-    path "summary.json.gz"
-    path "*.csv.gz", emit: csv
-    tuple val(specimen), path("${specimen}.adduct.families.txt.gz"), emit: adduct_families
-    path "${specimen}.adduct.gtf"
+    path "*"
+    tuple val(specimen), path("*/*.DSC.bam"), emit: dsc_bam
+    tuple val(specimen), path("*/*.SSC.POS.bam"), emit: ssc_pos_bam
+    tuple val(specimen), path("*/*.SSC.NEG.bam"), emit: ssc_neg_bam
+    tuple val(specimen), path("*/*.csv"), emit: csv
+    tuple val(specimen), path("*/*.json.gz"), emit: json
+    tuple val(specimen), path("*/*.adduct.families.txt.gz"), emit: adduct_families
 
     script:
     template 'parse_ssc.sh'
@@ -116,15 +117,15 @@ process format_vcf {
 // Format the aligned DSC reads as pileup
 process format_pileup {
     container "${params.container__bwa}"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/${filtering}/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
-    tuple val(specimen), path("DSC.bam")
+    tuple val(specimen), val(filtering), path(bam)
     path ref
 
     output:
-    tuple val(specimen), path("DSC.pileup.gz")
+    tuple val(specimen), path("${bam.name.replaceAll(".bam", "")}.pileup.gz")
 
     script:
     template 'format_pileup.sh'
@@ -220,35 +221,65 @@ workflow variants_wf{
     )
 
     // Parse the SSC data in order to:
-    //   - Construct DSCs BAMs which combine both strands
     //   - Call adducts from the SSC data
     //   - Call SNPs from the SSC data
-    //   - Summarize the total number of adducts and SNPs
-    //   - Summarize the number of adducts and SNPs per chromosome
-    //   - Summarize the number of adducts and SNPs per position within each read
+    //   - Count the number of mutations and adducts per DSC
+    //   - Make a table of all mutations and adducts per DSC
+    //   - Write out a DSC BAM and SSC BAM for each possible
+    //     level of filtering based on the maximum number of
+    //     allowable mutations and adducts per DSC
+    //   - Make a summary table of the total number of adducts
+    //     and SNPs for each of the possible levels of filtering
+    // The output of this process will be published to
+    //   ${params.output}/6_filtered_SSC/${specimen}/
+    // with the suffixes:
+    //   ${params.output}/6_filtered_SSC/${specimen}/all/
+    //   ${params.output}/6_filtered_SSC/${specimen}/max_variants_{i}/
+    // where {i} is a non-negative integer with the maximum
+    // number of allowed variants per family (the sum of
+    // adducts and variants) in the filtered results
+    // Note: All of the files inside each subfolder will have the
+    // prefix all or max_variants_{i} so that downstream processes
+    // can identify the appropriate subfolder for publishing any
+    // additional outputs which will be derived from them
     parse_ssc(
         filter_ssc_depth.out
     )
 
-    // Format the DSC data as BAM
-    format_dsc(
-        filter_ssc_depth.out
-    )
+    // Make a channel which contains each of the BAM files
+    // from the parse_ssc output, along with a variable
+    // indicating the filtering which was performed on the
+    // families based on the maximum number of variants and adducts
+    parse_ssc
+        .out
+        .dsc_bam
+        .transpose()
+        .map {
+            it -> [it[0], it[1].name.replaceAll(".DSC.bam", ""), it[1]]
+        }
+        .mix(
+            parse_ssc
+                .out
+                .ssc_pos_bam
+                .transpose()
+                .map {
+                    it -> [it[0], it[1].name.replaceAll(".SSC.POS.bam", ""), it[1]]
+                }
+        )
+        .mix(
+            parse_ssc
+                .out
+                .ssc_neg_bam
+                .transpose()
+                .map {
+                    it -> [it[0], it[1].name.replaceAll(".SSC.NEG.bam", ""), it[1]]
+                }
+        )
+        .set { merged_bam_ch }
 
-    // Sort the DSC BAM file
-    index_dsc(
-        format_dsc.out
-    )
-
-    // Format the output as VCF
-    format_vcf(
-        index_dsc.out[0],
-        genome_ref
-    )
-
-    // Make a pileup file
+    // Make a pileup file from each of the BAM files
     format_pileup(
-        index_dsc.out[0],
+        merged_bam_ch,
         genome_ref
     )
 

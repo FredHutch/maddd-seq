@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 echo "Specimen: $specimen"
+echo "BAM: ${bam}"
 echo "Reference genome index:"
 echo "${ref}" | tr ' ' '\n'
 
@@ -22,10 +23,10 @@ if [[ ! -s \$GENOME ]]; then
 
 fi
 
-# Make a pileup file from the DSC data
+# Make a pileup file from the BAM
 samtools \
     mpileup \
     -f \${GENOME} \
-    DSC.bam \
+    ${bam} \
 | gzip -c \
-> DSC.pileup.gz
+> ${bam.name.replaceAll(".bam", "")}.pileup.gz
