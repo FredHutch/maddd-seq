@@ -99,15 +99,15 @@ process index_dsc {
 // Format the align DSC reads as VCF
 process format_vcf {
     container "${params.container__bcftools}"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/alignments/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/${filtering}/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
-    tuple val(specimen), path("DSC.bam")
+    tuple val(specimen), val(filtering), path(bam)
     path ref
 
     output:
-    file "DSC.vcf.gz"
+    file "${bam.name.replaceAll(".bam", "")}.vcf.gz"
 
     script:
     template 'format_vcf.sh'
@@ -125,7 +125,7 @@ process format_pileup {
     path ref
 
     output:
-    tuple val(specimen), path("${bam.name.replaceAll(".bam", "")}.pileup.gz")
+    tuple val(specimen), val(filtering), path("${bam.name.replaceAll(".bam", "")}.pileup.gz")
 
     script:
     template 'format_pileup.sh'
@@ -135,18 +135,18 @@ process format_pileup {
 // Format the align DSC reads as TSV
 process format_tsv {
     container "${params.container__pandas}"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/${filtering}/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
-    tuple val(specimen), path(pileup)
+    tuple val(specimen), val(filtering), path(pileup)
 
     output:
-    file "${specimen}.DSC.tsv.gz"
+    file "${pileup.name.replaceAll(".pileup.gz", "")}.tsv.gz"
 
     script:
     """#!/bin/bash
-    format_tsv.py $pileup ${specimen}.DSC.tsv.gz
+    format_tsv.py $pileup ${pileup.name.replaceAll(".pileup.gz", "")}.tsv.gz
     """
 
 }
@@ -154,14 +154,14 @@ process format_tsv {
 // Format details about all SSCs as CSV
 process format_ssc_csv {
     container "${params.container__pandas}"
-    publishDir "${params.output}/6_filtered_SSC/${specimen}/stats/", mode: 'copy', overwrite: true
+    publishDir "${params.output}/6_filtered_SSC/${specimen}/${filtering}/", mode: 'copy', overwrite: true
     label "io_limited"
     
     input:
-    tuple val(specimen), path("total.json.gz"), path("SSC.details.csv.gz")
+    tuple val(specimen), val(filtering), path("total.json.gz"), path("SSC.details.csv.gz")
 
     output:
-    file "${specimen}.SSC.csv.gz"
+    file "SSC.csv.gz"
 
     script:
     template 'format_ssc_csv.py'
@@ -283,7 +283,13 @@ workflow variants_wf{
         genome_ref
     )
 
-    // Format the output as TSV
+    // Format the pileup data as VCF
+    format_vcf(
+        merged_bam_ch,
+        genome_ref
+    )
+
+    // Format the output as TSV from the pileup
     format_tsv(
         format_pileup.out
     )
@@ -295,6 +301,10 @@ workflow variants_wf{
         parse_ssc
             .out
             .json
+            .transpose()
+            .map {
+                it -> [it[0], it[1].name.replaceAll(".json.gz", ""), it[1]]
+            }
             .join(
                 filter_ssc_depth
                     .out

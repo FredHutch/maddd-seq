@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 echo "Specimen: $specimen"
+echo "BAM: $bam"
 echo "Reference genome index:"
 echo "${ref}" | tr ' ' '\n'
 
@@ -22,12 +23,12 @@ if [[ ! -s \$GENOME ]]; then
 
 fi
 
-# Make a VCF file from the DSC data
+# Make a VCF file from the BAM
 bcftools \
     mpileup \
     -Ou \
     -f \${GENOME} \
-    DSC.bam \
+    ${bam} \
 | bcftools \
     call \
     --threads ${task.cpus} \
@@ -35,4 +36,4 @@ bcftools \
     -P 0 \
     -mv \
     -Oz \
-    -o DSC.vcf.gz
+    -o ${bam.name.replaceAll(".bam", "")}.vcf.gz

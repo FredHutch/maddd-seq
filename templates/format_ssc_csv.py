@@ -60,4 +60,4 @@ ssc_df = pd.concat(
 ).drop(columns='family')
 
 # Save to disk
-ssc_df.to_csv("${specimen}.SSC.csv.gz", index=None)
+ssc_df.to_csv("SSC.csv.gz", index=None)
