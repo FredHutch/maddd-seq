@@ -574,34 +574,34 @@ class ParseSSC:
         summary_dat, by_chr, snp_base_changes, adduct_base_changes = self.format_summary(keep_families=keep_families)
 
         # Save the summary information to JSON
-        summary_json_fpo = os.path.join(folder, "summary.json.gz")
+        summary_json_fpo = os.path.join(folder, f"{folder}.summary.json")
         logger.info(f"Writing summary information to {summary_json_fpo}")
-        with gzip.open(summary_json_fpo, "wt") as handle:
+        with open(summary_json_fpo, "w") as handle:
             json.dump(summary_dat, handle)
 
         # Output path for the data grouped by contig
-        by_chr_fpo = os.path.join(folder, f"{specimen}.by_chr.csv.gz")
+        by_chr_fpo = os.path.join(folder, f"{folder}.by_chr.csv")
         logger.info(f"Writing data grouped by contig to {by_chr_fpo}")
 
         # Save the by-chr information to CSV
         by_chr.to_csv(by_chr_fpo, index_label='chr')
 
         # Output path for SNP data grouped by base change
-        snp_base_fpo = os.path.join(folder, f"{specimen}.snps_by_base.csv.gz")
+        snp_base_fpo = os.path.join(folder, f"{folder}.snps_by_base.csv")
         logger.info(f"Writing SNP data grouped by base change to {snp_base_fpo}")
 
         # Save the SNP by-base information to CSV
         snp_base_changes.to_csv(snp_base_fpo, index_label='base')
 
         # Output path for adduct data grouped by base change
-        adduct_base_output = os.path.join(folder, f"{specimen}.adducts_by_base.csv.gz")
+        adduct_base_output = os.path.join(folder, f"{folder}.adducts_by_base.csv")
         logger.info(f"Writing adduct data grouped by base change to {adduct_base_output}")
 
         # Save the adduct by-base information to CSV
         adduct_base_changes.to_csv(adduct_base_output, index_label='base')
 
         # Output path for variant data organized by position in the reads
-        base_positions_output = os.path.join(folder, f"{specimen}.by_read_position.csv.gz")
+        base_positions_output = os.path.join(folder, f"{folder}.by_read_position.csv")
         logger.info(f"Output path: {base_positions_output}")
 
         # Format the data by read position as a DataFrame
@@ -611,12 +611,12 @@ class ParseSSC:
         # Write out the filtered DSC and SSC as BAM
         for info, prefix, flag in [
             (self.dsc_info, "DSC", 99),
-            # ({family_id: ssc["pos"] for family_id, ssc in self.ssc_info.items()}, "SSC.POS", 99),
-            # ({family_id: ssc["neg"] for family_id, ssc in self.ssc_info.items()}, "SSC.NEG", 83)
+            ({family_id: ssc["pos"] for family_id, ssc in self.ssc_info.items()}, "SSC.POS", 99),
+            ({family_id: ssc["neg"] for family_id, ssc in self.ssc_info.items()}, "SSC.NEG", 83)
         ]:
             self.write_bam(
                 info,
-                fp=os.path.join(folder, f"{prefix}.max_variants_{max_vars}.bam"),
+                fp=os.path.join(folder, f"{folder}.{prefix}.bam"),
                 keep_families=keep_families,
                 flag=flag
             )
@@ -653,9 +653,19 @@ class ParseSSC:
                         a.reference_id = reference_id_map[family_dat["ref_name"]]
                         a.reference_start = family_dat["start"]
                         a.mapping_quality = 20
-                        a.cigar = [(0,seqlen)]
+                        a.cigar = [(0,len(family_dat["cons"]))]
                         a.query_qualities = pysam.qualitystring_to_array("".join(["?" for _ in family_dat["cons"]]))
                         outf.write(a)
+
+        # Sort the BAM file
+        sorted_fp = fp + ".sorted.bam"
+        logger.info(f"Sorting {fp}")
+        pysam.sort("-o", sorted_fp, fp)
+        os.rename(sorted_fp, fp)
+
+        # Index the sorted BAM file
+        logger.info(f"Indexing {fp}")
+        pysam.index(fp)
 
     def format_summary(self, keep_families=None):
         """Summarize the output, both by contig and overall."""
@@ -734,7 +744,7 @@ class ParseSSC:
     def write_total_json(self, folder=None, keep_families=None):
         """Save the total information to JSON."""
 
-        fpo = os.path.join(folder, "total.json.gz")
+        fpo = os.path.join(folder, f"{folder}.json.gz")
 
         logger.info(f"Writing all output to {fpo}")
 
@@ -753,7 +763,7 @@ class ParseSSC:
 
         # Output path for a text file containing the names of all families
         # which contain adducts
-        fpo = os.path.join(folder, f"{specimen}.adduct.families.txt.gz")
+        fpo = os.path.join(folder, f"{folder}.adduct.families.txt.gz")
 
         logger.info(f"Writing out {len(keep_families):,} families to {fpo}")
         with gzip.open(fpo, "wt") as handle:
@@ -763,7 +773,7 @@ class ParseSSC:
         """Write out the adduct information in GTF format."""
 
         # Format the output filepath
-        fpo = os.path.join(folder, f"{specimen}.adduct.gtf")
+        fpo = os.path.join(folder, f"{folder}.adduct.gtf")
 
         logger.info(f"Writing out adducts to {fpo} for {len(keep_families):,} families")
 
