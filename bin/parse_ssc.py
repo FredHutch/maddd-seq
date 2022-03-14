@@ -2,14 +2,14 @@
 """
 Parse the SSC data in order to:
   - Call adducts from the SSC data
-  - Call SNPs from the SSC data
+  - Call variants from the SSC data
   - Count the number of mutations and adducts per DSC
   - Make a table of all mutations and adducts per DSC
   - Write out a DSC BAM and SSC BAM for each possible
     level of filtering based on the maximum number of
     allowable mutations and adducts per DSC
   - Make a summary table of the total number of adducts
-    and SNPs for each of the possible levels of filtering
+    and variants for each of the possible levels of filtering
 """
 
 from collections import defaultdict
@@ -584,10 +584,10 @@ class ParseSSC:
         logger.info(f"Writing data grouped by contig to {by_chr_fpo}")
 
         # Save the by-chr information to CSV
-        by_chr.to_csv(by_chr_fpo, index_label='chr')
+        by_chr.T.to_csv(by_chr_fpo)
 
         # Output path for SNP data grouped by base change
-        snp_base_fpo = os.path.join(folder, f"{folder}.snps_by_base.csv")
+        snp_base_fpo = os.path.join(folder, f"{folder}.variants_by_base.csv")
         logger.info(f"Writing SNP data grouped by base change to {snp_base_fpo}")
 
         # Save the SNP by-base information to CSV
@@ -670,7 +670,7 @@ class ParseSSC:
     def format_summary(self, keep_families=None):
         """Summarize the output, both by contig and overall."""
 
-        # Count up the number of molecules, bases, snps, and adducts
+        # Count up the number of molecules, bases, variants, and adducts
         # both overall
         total_counts = defaultdict(int)
         # by chromosome
@@ -690,9 +690,9 @@ class ParseSSC:
                 # Skip it
                 continue
 
-            # Increment the number of reads
+            # Increment the number of families
             total_counts['ssc'] += 1
-            chr_counts[dsc['ref_name']]['ssc'] += 1
+            chr_counts[dsc['ref_name']]['families'] += 1
 
             # Increment the number of bases
             total_counts['bases'] += dsc['nbases']
@@ -705,9 +705,9 @@ class ParseSSC:
             # Iterate over each of the positions with a SNP
             for snp_info in dsc['variants'].values():
 
-                # Increment the number of SNPs
-                total_counts['snps'] += 1
-                chr_counts[dsc['ref_name']]['snps'] += 1
+                # Increment the number of variants
+                total_counts['variants'] += 1
+                chr_counts[dsc['ref_name']]['variants'] += 1
 
                 # Increment the individual base change
                 snp_base_changes[snp_info['var']][snp_info['ref']] += 1
@@ -739,7 +739,9 @@ class ParseSSC:
             index=['A', 'T', 'C', 'G']
         ).fillna(0).applymap(int)
 
-        return total_counts, pd.DataFrame(chr_counts), snp_base_changes, adduct_base_changes
+        chr_counts = pd.DataFrame(chr_counts).fillna(0).applymap(int)
+
+        return total_counts, chr_counts, snp_base_changes, adduct_base_changes
 
     def write_total_json(self, folder=None, keep_families=None):
         """Save the total information to JSON."""
