@@ -571,7 +571,7 @@ class ParseSSC:
         self.write_total_json(folder=folder, keep_families=keep_families)
 
         # Format all of the output, both by contig and overall
-        summary_dat, by_chr, snp_base_changes, adduct_base_changes = self.format_summary(keep_families=keep_families)
+        summary_dat, by_chr, variant_base_changes, adduct_base_changes = self.format_summary(keep_families=keep_families)
 
         # Save the summary information to JSON
         summary_json_fpo = os.path.join(folder, f"{folder}.summary.json")
@@ -586,12 +586,12 @@ class ParseSSC:
         # Save the by-chr information to CSV
         by_chr.T.to_csv(by_chr_fpo)
 
-        # Output path for SNP data grouped by base change
-        snp_base_fpo = os.path.join(folder, f"{folder}.variants_by_base.csv")
-        logger.info(f"Writing SNP data grouped by base change to {snp_base_fpo}")
+        # Output path for variant data grouped by base change
+        variant_base_fpo = os.path.join(folder, f"{folder}.variants_by_base.csv")
+        logger.info(f"Writing variant data grouped by base change to {variant_base_fpo}")
 
-        # Save the SNP by-base information to CSV
-        snp_base_changes.to_csv(snp_base_fpo, index_label='base')
+        # Save the variant by-base information to CSV
+        variant_base_changes.to_csv(variant_base_fpo, index_label='base')
 
         # Output path for adduct data grouped by base change
         adduct_base_output = os.path.join(folder, f"{folder}.adducts_by_base.csv")
@@ -677,7 +677,7 @@ class ParseSSC:
         chr_counts = defaultdict(lambda: defaultdict(int))
         # by the base change for mutations
         # A -> T, T -> C, etc.
-        snp_base_changes = defaultdict(lambda: defaultdict(int))
+        variant_base_changes = defaultdict(lambda: defaultdict(int))
         # and by the base change for adducts
         adduct_base_changes = defaultdict(lambda: defaultdict(int))
 
@@ -702,15 +702,15 @@ class ParseSSC:
             total_counts['adducts'] += len(dsc['adducts'])
             chr_counts[dsc['ref_name']]['adducts'] += len(dsc['adducts'])
 
-            # Iterate over each of the positions with a SNP
-            for snp_info in dsc['variants'].values():
+            # Iterate over each of the positions with a variant
+            for variant_info in dsc['variants'].values():
 
                 # Increment the number of variants
                 total_counts['variants'] += 1
                 chr_counts[dsc['ref_name']]['variants'] += 1
 
                 # Increment the individual base change
-                snp_base_changes[snp_info['var']][snp_info['ref']] += 1
+                variant_base_changes[variant_info['var']][variant_info['ref']] += 1
 
             # Iterate over each of the positions with an adduct
             for adduct_info in dsc['adducts'].values():
@@ -725,11 +725,11 @@ class ParseSSC:
         # Add all of the subset data to the totals
         total_counts['specimen'] = specimen
         total_counts['by_chr'] = chr_counts
-        total_counts['snp_base_changes'] = snp_base_changes
+        total_counts['variant_base_changes'] = variant_base_changes
         total_counts['adduct_base_changes'] = adduct_base_changes
 
         # Format the base change data as DataFrames
-        snp_base_changes = pd.DataFrame(snp_base_changes).reindex(
+        variant_base_changes = pd.DataFrame(variant_base_changes).reindex(
             columns=['A', 'T', 'C', 'G'],
             index=['A', 'T', 'C', 'G']
         ).fillna(0).applymap(int)
@@ -741,7 +741,7 @@ class ParseSSC:
 
         chr_counts = pd.DataFrame(chr_counts).fillna(0).applymap(int)
 
-        return total_counts, chr_counts, snp_base_changes, adduct_base_changes
+        return total_counts, chr_counts, variant_base_changes, adduct_base_changes
 
     def write_total_json(self, folder=None, keep_families=None):
         """Save the total information to JSON."""
