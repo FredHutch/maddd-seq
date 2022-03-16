@@ -84,7 +84,7 @@ process trim_overhang_join_shards {
 // Count up the number of aligned reads
 process flagstats {
     container "${params.container__bwa}"
-    publishDir "${params.output}/4_aligned/flagstats_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/4_aligned/flagstats_intermediate/${shard_ix}/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:

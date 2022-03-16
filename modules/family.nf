@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 // Extract the ID, chromosome, position, orientation, and R1/R2 for each alignment
 process extract_positions {
     container "${params.container__pandas}"
-    publishDir "${params.output}/5_all_SSC/${specimen}/extract_positions_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/5_all_SSC/${specimen}/extract_positions_intermediate/${shard_ix}/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -25,7 +25,7 @@ process extract_positions {
 // will be encoded in the attached CSV by this step
 process assign_families {
     container "${params.container__pandas}"
-    publishDir "${params.output}/5_all_SSC/${specimen}/assign_families_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/5_all_SSC/${specimen}/assign_families_intermediate/${shard_ix}/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
@@ -42,7 +42,7 @@ process assign_families {
 // Compute the SSC sequences at the FASTQ level
 process make_ssc {
     container "${params.container__pandas}"
-    publishDir "${params.output}/5_all_SSC/${specimen}/make_ssc_intermediate/", mode: 'copy', enabled: params.save_intermediates
+    publishDir "${params.output}/5_all_SSC/${specimen}/make_ssc_intermediate/${shard_ix}/", mode: 'copy', enabled: params.save_intermediates
     label "io_limited"
     
     input:
