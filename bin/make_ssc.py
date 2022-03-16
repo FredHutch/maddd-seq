@@ -10,6 +10,7 @@ import os
 from Bio.Seq import reverse_complement
 import pandas as pd
 import pysam
+import sys
 
 # Parse the input filepaths
 
@@ -19,16 +20,16 @@ print(f"Reading family assignments from {families_csv_gz}")
 assert os.path.exists(families_csv_gz)
 
 # Aligned reads in BAM format
-bam = "${bam}"
+bam = sys.argv[1]
 print(f"bam: {bam}")
 assert os.path.exists(bam)
 
 # Minimum proportion of bases needed to calculate a consensus
-min_base_prop = ${params.min_base_prop}
+min_base_prop = float(sys.argv[2])
 print(f"Minimum proportion of bases required for consensus: {min_base_prop}")
 
 # Get the shard index, used to name the outputs
-shard_ix = "${shard_ix}"
+shard_ix = sys.argv[3]
 
 # Output file for the stats
 stats_csv = f"{shard_ix}.stats.csv.gz"
@@ -240,9 +241,9 @@ def compute_consensus(group_reads):
             reads[i] = reads[i] + "".join(["N" for _ in range(max_rlen - len(reads[i]))])
 
     # Format a multi-FASTA
-    multi_fasta = "\\n".join(
+    multi_fasta = "\n".join(
         [
-            f">{i}\\n{read}"
+            f">{i}\n{read}"
             for i, read in enumerate(reads)
         ]
     )
@@ -314,7 +315,7 @@ def write_fastq(read_tuple, output_handle):
     family_id, seq, qual = read_tuple
 
     output_handle.write(
-        f"@{family_id}\\n{seq}\\n+\\n{qual}\\n"
+        f"@{family_id}\n{seq}\n+\n{qual}\n"
     )
 
 
@@ -330,7 +331,7 @@ def write_csv(family_stats, stats_csv):
     with gzip.open(stats_csv, "wt") as handle:
 
         # Write out the header
-        handle.write(",".join(header) + '\\n')
+        handle.write(",".join(header) + '\n')
 
         # Iterate over each item
         for r in family_stats:
@@ -339,7 +340,7 @@ def write_csv(family_stats, stats_csv):
             handle.write(",".join([
                 str(r[cname])
                 for cname in header
-            ]) + '\\n')
+            ]) + '\n')
 
 
 # READ IN THE FAMILY ASSIGNMENT PER READ
