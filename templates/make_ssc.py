@@ -73,13 +73,13 @@ def parse_input_bam(bam, families):
             direction = 'rev' if read.is_reverse else 'fwd'
             label = f"{side}-{direction}"
 
-            # Add it to the dict as a tuple of sequence and quality
+            # Add it to the dict as a list of sequence, quality, and position
             family_reads[
                 families[read.query_name]
             ][
                 label
             ].append(
-                (read.query_alignment_sequence, read.query_alignment_qualities)
+                [read.query_alignment_sequence, read.query_alignment_qualities, read.reference_start]
             )
             counter += 1
 
@@ -209,6 +209,21 @@ def compute_consensus(group_reads):
         # Then just return that read
         return group_reads[0][0], encode_quals(list(group_reads[0][1]))
 
+    # Get the leftmost position across all of the reads
+    min_pos = min([r[2] for r in group_reads])
+
+    # For each of the reads
+    for r in group_reads:
+
+        # If the position is > min_pos
+        if r[2] > min_pos:
+
+            # Add back N's to bring it to the same position
+            r[0] = "".join(["N" for _ in range(r[2] - min_pos)]) + r[0]
+
+            # Also add 0 qualities
+            r[1] = [0 for _ in range(r[2] - min_pos)] + list(r[1])
+
     # Get the maximum read length
     max_rlen = max([len(r[0]) for r in group_reads])
 
@@ -251,7 +266,7 @@ def compute_consensus(group_reads):
         raise e
 
     # Remove any terminal N's
-    cons = cons.rstrip("N")
+    cons = cons.strip("N")
 
     # Take the maximum quality score across all reads
     quals = defaultdict(list)
