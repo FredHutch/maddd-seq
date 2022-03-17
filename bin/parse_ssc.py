@@ -787,7 +787,7 @@ class ParseSSC:
                 start=adduct_pos + 1,
                 end=adduct_pos + 1,
                 strand="+" if adduct_info["strand"] == "pos" else "-",
-                attribute='adduct "%s"; read_as "%s"' % (adduct_info['ref'], adduct_info['var'])
+                attribute='adduct "%s"; read_as "%s";' % (adduct_info['ref'], adduct_info['var'])
             )
             for family_id, dsc in self.dsc_info.items()
             if family_id in keep_families
