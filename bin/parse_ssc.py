@@ -807,6 +807,9 @@ class ParseSSC:
         # Convert to a DataFrame
         adducts = pd.DataFrame(adducts)
 
+        # Drop any duplicates
+        adducts = adducts.drop_duplicates()
+
         # Add in the fixed columns and resort
         adducts = adducts.assign(
             source=specimen,
