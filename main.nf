@@ -65,8 +65,6 @@ Optional Arguments:
                         of the R1 (default: ${params.RD1_ADAPTER_3P})
   --RD2_ADAPTER_3P      Sequence of the universal Illumina adapter found at the 3'
                         of the R2 (default: ${params.RD2_ADAPTER_3P})
-  --target_regions_bed  Optional BED file describing a set of target genomic regions
-                        to use for analysis, e.g. exome target capture.
   --fastq_suffix        When input data is specified by --fastq_folder (instead of --sample_sheet),
                         only files with this suffix will be used as inputs (default: ${params.fastq_suffix})
   --save_intermediates  If specified, publish all 'intermediate' files.
