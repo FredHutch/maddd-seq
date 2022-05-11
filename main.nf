@@ -46,9 +46,6 @@ Optional Arguments:
                         This should correspond to the length of every entry in
                         the barcode text file specified with --barcodes.
                         (default: ${params.barcode_length})
-  --barcode_max_homopolymer
-                        Maximum number of repeated bases in barcode sequences
-                        (default: ${params.barcode_max_homopolymer})
   --max_barcode_mismatch
                         Maximum number of nucleotide differences used for barcode
                         error correction
