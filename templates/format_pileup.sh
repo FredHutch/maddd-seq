@@ -27,6 +27,7 @@ fi
 samtools \
     mpileup \
     -f \${GENOME} \
+    -d 1000000 \
     ${bam} \
 | gzip -c \
 > ${bam.name.replaceAll(".bam", "")}.pileup.gz

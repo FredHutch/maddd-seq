@@ -26,6 +26,7 @@ fi
 # Make a VCF file from the BAM
 bcftools \
     mpileup \
+    -d 1000000 \
     -Ou \
     -f \${GENOME} \
     ${bam} \
