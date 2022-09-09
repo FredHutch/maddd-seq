@@ -40,6 +40,11 @@ logger.info(f"Processing specimen: {specimen}")
 # The user will specify whether to filter on variants only, or on variants and adducts
 filter_on = sys.argv[2]
 assert filter_on in ["total_variants", "total_variants_and_adducts"], f"ERROR: Not recognized: {filter_on}"
+print(f"filter_on = {filter_on}")
+
+# The user will specify the highest number of variants (+/- adducts) to filter on
+filter_max = int(sys.argv[3])
+print(f"filter_max = {filter_max}")
 
 # Input filepaths for filtered SSC sequences
 input_pos_bam = "POS.SSC.bam"
@@ -93,13 +98,14 @@ def iupac(base1, base2):
 class ParseSSC:
     """Class used to analyze SSC data from BAM inputs."""
 
-    def __init__(self, specimen, filter_on="total_variants"):
+    def __init__(self, specimen, filter_on="total_variants", filter_max=10):
 
         # Record the specimen name
         self.specimen = specimen
 
         # Record the filter logic
         self.filter_on = filter_on
+        self.filter_max = filter_max
 
         # Keep track of the reference sequence
         # Key by ref_name and position
@@ -145,6 +151,10 @@ class ParseSSC:
             self.dsc_info[family_id][self.filter_on]
             for family_id in self.dsc_info
         ])):
+
+            # Don't write outputs for anything over filter_max
+            if max_vars > self.filter_max:
+                continue
 
             # Write out the total information, filtering to that maximum number
             self.write_output(folder=f"max_variants_{max_vars}", max_vars=max_vars)
@@ -852,4 +862,8 @@ class ParseSSC:
             quoting=3
         )
 
-ParseSSC(specimen, filter_on=filter_on)
+ParseSSC(
+    specimen,
+    filter_on=filter_on,
+    filter_max=filter_max
+)
