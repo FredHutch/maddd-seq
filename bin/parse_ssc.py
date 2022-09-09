@@ -37,6 +37,10 @@ logger.addHandler(consoleHandler)
 specimen = sys.argv[1]
 logger.info(f"Processing specimen: {specimen}")
 
+# The user will specify whether to filter on variants only, or on variants and adducts
+filter_on = sys.argv[2]
+assert filter_on in ["total_variants", "total_variants_and_adducts"], f"ERROR: Not recognized: {filter_on}"
+
 # Input filepaths for filtered SSC sequences
 input_pos_bam = "POS.SSC.bam"
 assert os.path.exists(input_pos_bam)
@@ -89,10 +93,13 @@ def iupac(base1, base2):
 class ParseSSC:
     """Class used to analyze SSC data from BAM inputs."""
 
-    def __init__(self, specimen):
+    def __init__(self, specimen, filter_on="total_variants"):
 
         # Record the specimen name
         self.specimen = specimen
+
+        # Record the filter logic
+        self.filter_on = filter_on
 
         # Keep track of the reference sequence
         # Key by ref_name and position
@@ -135,7 +142,7 @@ class ParseSSC:
 
         # For each of the unique values of the total number of variants and adducts per read
         for max_vars in list(set([
-            self.dsc_info[family_id]["total_variants_and_adducts"]
+            self.dsc_info[family_id][self.filter_on]
             for family_id in self.dsc_info
         ])):
 
@@ -413,7 +420,9 @@ class ParseSSC:
                 # }
                 variants = dict(),
                 # Keep track of the total number of variants and adducts
-                total_variants_and_adducts = 0
+                total_variants_and_adducts = 0,
+                # Keep track of the total number of variants
+                total_variants = 0
             )
         )
         
@@ -514,6 +523,9 @@ class ParseSSC:
                 # Increment the total number of variants and adducts
                 self.dsc_info[family_id]["total_variants_and_adducts"] += 1
 
+                # Increment the total number of variants
+                self.dsc_info[family_id]["total_variants"] += 1
+
             # If only the positive strand is mismatched
             elif pos_base != refbase:
 
@@ -558,7 +570,7 @@ class ParseSSC:
         keep_families = set([
             family_id
             for family_id, dsc in self.dsc_info.items()
-            if max_vars is None or dsc["total_variants_and_adducts"] <= max_vars
+            if max_vars is None or dsc[self.filter_on] <= max_vars
         ])
 
         # Save the adduct information as GTF
@@ -840,4 +852,4 @@ class ParseSSC:
             quoting=3
         )
 
-ParseSSC(specimen)
+ParseSSC(specimen, filter_on=filter_on)
