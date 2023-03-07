@@ -8,7 +8,7 @@ samtools view -H ${bam} > adduct.reads.sam
 
 # Add the reads from the families which yielded adducts
 echo "Getting families from this shard which contain adducts"
-( fgrep -f <(gunzip -c ${adduct_families}) <(gunzip -c ${read_families}) > shard.adduct.families.txt  || test $? = 1 )
+( fgrep -f <(gunzip -c ${adduct_families}) <(gunzip -c ${read_families}) > shard.adduct.families.txt  || test \$? = 1 )
 
 # If there are families from this shard which do contain adducts
 if (( \$(cat shard.adduct.families.txt | wc -l) > 0 )); then
