@@ -51,7 +51,7 @@ process shard_reads {
 // Trim the reads so that they do not overhang the end of the fragment
 process trim_overhang {
     container "${params.container__pandas}"
-    label "cpu_medium"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(shard_ix), path("untrimmed.bam"), path("read_positions.csv.gz")

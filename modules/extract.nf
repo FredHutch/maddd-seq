@@ -7,7 +7,7 @@ nextflow.enable.dsl=2
 // Extract reads from families which contain adducts
 process adduct_reads {
     container "${params.container__bwa}"
-    label "mem_medium"
+    label "io_limited"
     
     input:
     tuple val(specimen), val(filtering), path(adduct_families), val(shard_ix), path(bam), path(read_families)
