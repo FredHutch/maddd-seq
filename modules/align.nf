@@ -57,7 +57,7 @@ process trim_overhang {
     tuple val(specimen), val(shard_ix), path("untrimmed.bam"), path("read_positions.csv.gz")
 
     output:
-    tuple val(specimen), val(shard_ix), path("${specimen}_${shard_ix}_R1.fastq.gz"), path("${specimen}_${shard_ix}_R2.fastq.gz")
+    tuple val(specimen), val(shard_ix), path("*_R1.fastq.gz"), path("*_R2.fastq.gz")
 
     script:
     template 'trim_overhang.sh'
