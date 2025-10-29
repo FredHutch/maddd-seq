@@ -10,7 +10,7 @@ process extract_positions {
     label "io_limited"
     
     input:
-    tuple val(specimen), val(shard_ix), path(bam)
+    tuple val(specimen), val(shard_ix), path("*.bam")
 
     output:
     tuple val(specimen), val(shard_ix), path("read_positions.csv.gz")

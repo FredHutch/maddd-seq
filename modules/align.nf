@@ -173,7 +173,8 @@ workflow align_wf{
 
     // Extract the positions of each aligned read to enable the trim_overhang method below
     extract_positions(
-        align_bwa.out.bam
+        // Combine all of the BAM files for the same specimen and shard
+        align_bwa.out.bam.groupTuple(by: [0, 1])
     )
 
     // Merge together the position information CSV with the BAM, using the first two
