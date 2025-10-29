@@ -105,7 +105,7 @@ process join_flagstats {
     label "io_limited"
     
     input:
-    tuple val(specimen), path("*")  // "${shard_ix}.flagstats"
+    tuple val(specimen), path("*.flagstats")  // "${shard_ix}.flagstats"
 
     output:
     path "${specimen}.flagstats"
