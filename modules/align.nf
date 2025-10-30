@@ -54,7 +54,7 @@ process trim_overhang {
     label "io_limited"
     
     input:
-    tuple val(specimen), val(shard_ix), path("untrimmed.bam"), path("read_positions.csv.gz")
+    tuple val(specimen), val(shard_ix), path("untrimmed.*.bam"), path("read_positions.csv.gz")
 
     output:
     tuple val(specimen), val(shard_ix), path("*_R1.fastq.gz"), path("*_R2.fastq.gz")
@@ -185,7 +185,7 @@ workflow align_wf{
     // on both of the channels (align_bwa.out.bam and extract_positions.out), and then the reverse
     // transformation is performed on the resulting channel to give it the expected structure
     // going into trim_overhang.
-    align_bwa.out.bam.map {
+    align_bwa.out.bam.groupTuple(by: [0, 1]).map {
         [[it[0], it[1]], it[2]]
     }.join(
         extract_positions.out.map {
