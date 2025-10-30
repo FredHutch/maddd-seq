@@ -12,7 +12,7 @@ from functools import lru_cache
 import logging
 import os
 import pandas as pd
-from Bio.Seq import reverse_complement, transcribe
+from pathlib import Path
 
 # Set the level of the logger to INFO
 logFormatter = logging.Formatter(
@@ -126,8 +126,14 @@ def correct_merged_barcode(merged_barcode):
 
 
 # Read in the table of counts
-logger.info("Reading in barcode_counts.csv.gz")
-df = pd.read_csv("barcode_counts.csv.gz")
+df = []
+for fp in Path(".").glob("barcode_counts.*.csv.gz"):
+    logger.info(f"Reading in {fp}")
+    df.append(pd.read_csv(fp))
+df = pd.concat(df)
+
+# Merge the counts across all input files
+df = df.groupby("barcode").sum().reset_index().sort_values(by="count", ascending=False)
 
 logger.info(f"Read in a table of {df.shape[0]:,} barcodes over {df['count'].sum():,} read pairs")
 

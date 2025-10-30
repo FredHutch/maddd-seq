@@ -150,7 +150,7 @@ workflow align_wf{
     // that each file contains the complete set for each barcode
     shard_reads(
         reads_ch
-            .join(shard_barcodes.out)
+            .combine(shard_barcodes.out, by: 0)
             .transpose()
             .map {
                 [
