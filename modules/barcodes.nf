@@ -65,7 +65,7 @@ process correct_barcode_errors {
     label "mem_medium"
 
     input:
-    tuple val(specimen), path("barcode_counts.csv.gz")
+    tuple val(specimen), path("barcode_counts.*.csv.gz")
     path "barcodes.txt"
 
     output:
@@ -119,7 +119,7 @@ workflow barcodes_wf{
 
     // Perform error correction on the barcodes
     correct_barcode_errors(
-        clip_barcodes.out.counts,
+        clip_barcodes.out.counts.groupTuple(),
         barcodes_txt
     )
 

@@ -3,6 +3,7 @@
 from collections import defaultdict
 import os
 
+
 class FlagStat:
 
     def __init__(self):
@@ -50,13 +51,13 @@ class FlagStat:
             for line in handle:
                 i, sep, j, l = line.rstrip("\\n").split(" ", 3)
                 assert sep == "+", f"Unexpected line format: {line}"
-                
+
                 try:
                     i = int(i)
                 except Exception as e:
                     print(f"Unexpected line format: {line}")
                     raise e
-                
+
                 try:
                     j = int(j)
                 except Exception as e:
@@ -64,6 +65,7 @@ class FlagStat:
                     raise e
 
                 yield i, j, l
+
 
 flagstat = FlagStat()
 for fp in os.listdir("."):

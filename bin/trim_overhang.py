@@ -6,6 +6,7 @@ import logging
 from Bio.Seq import reverse_complement
 import pysam
 import pandas as pd
+from pathlib import Path
 
 
 class TrimOverhang:
@@ -55,7 +56,7 @@ class TrimOverhang:
 
     def get_insert_length(self):
         """Get the lengths of every sequenced molecule."""
-        
+
         # Read in the table listing the location of each pair of reads
         positions = pd.read_csv(self.input_positions)
 
@@ -112,10 +113,6 @@ class TrimOverhang:
             R2=dict()
         )
 
-        # Open the BAM file for reading
-        self.logger.info(f"Opening {args.input_bam} for reading")
-        bam = pysam.AlignmentFile(args.input_bam, "rb")
-
         # Open the FASTQ files for writing
         self.logger.info(f"Opening {args.output_read1} for writing")
         self.R1 = gzip.open(args.output_read1, "wt")
@@ -125,12 +122,19 @@ class TrimOverhang:
         # Keep track of the read pairs which were written
         self.reads_written = set([])
 
-        # Iterate over every read in the alignment
-        for read in bam:
+        # Iterate over the input_bam input, in case there is a pattern
+        for input_bam in Path(".").glob(self.input_bam):
 
-            # Write out a read if its mate is already found,
-            # otherwise add it to the buffer
-            self.process_read(read)
+            # Open the BAM file for reading
+            self.logger.info(f"Opening {input_bam} for reading")
+            bam = pysam.AlignmentFile(input_bam, "rb")
+
+            # Iterate over every read in the alignment
+            for read in bam:
+
+                # Write out a read if its mate is already found,
+                # otherwise add it to the buffer
+                self.process_read(read)
 
         # Close the file handles
         self.logger.info("Closing all file handles")
